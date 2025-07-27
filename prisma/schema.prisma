@@ -14,7 +14,7 @@ datasource db {
 }
 
 model User {
-  id         String   @id @default(cuid())
+  id         String   @id default(cuid())
   name       String
   email      String   @unique
   password   String?
@@ -22,7 +22,12 @@ model User {
   verifiedAt DateTime?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  
+
+  // Kolom tambahan
+  nomor         String?     // Nomor telepon opsional
+  gender        Gender?     // Enum gender
+  tanggal_lahir DateTime?   // Tanggal lahir opsional
+
   // Relasi OTP
   otps Otp[]
 
@@ -37,7 +42,7 @@ model User {
   // Relasi untuk tugas
   assignedTasks Task[] @relation("TaskAssignee")
 
-  @@map("users") // Tetap map ke tabel plural
+  @@map("users")
 }
 
 model Otp {
@@ -126,4 +131,9 @@ enum ProjectRole {
 enum TaskStatus {
   BELUM_SELESAI
   SELESAI
+}
+
+enum Gender {
+  LAKI_LAKI
+  PEREMPUAN
 }

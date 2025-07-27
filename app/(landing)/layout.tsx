@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import "@/app/globals.css"
 import Navigation from "@/components/navigation"
+import FlashMassage from "@/components/FlashMassage"
 
 export const metadata: Metadata = {
   title: "TaskSync",
@@ -16,6 +17,7 @@ export default function RootLayout({
   return (
     <>
       <Navigation />
+      <FlashMassage />
       <main>{children}</main>
     </>
   )

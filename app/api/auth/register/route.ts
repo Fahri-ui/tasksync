@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { z } from "zod";
-import { PrismaClient, Role } from "@prisma/client";
+import { PrismaClient, Role, Gender } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -9,48 +9,94 @@ export async function POST(req: Request) {
   try {
     const data = await req.json();
 
-    // Validasi input
     const schema = z.object({
-      email: z.string().email(),
-      password: z.string().min(6),
-      name: z.string().min(2),
+      name: z.string().min(3, { message: "Nama lengkap minimal 3 karakter" }),
+      email: z.string().email({ message: "Format email tidak valid" }),
+      password: z.string().min(6, { message: "Kata sandi minimal 6 karakter" }),
+      nomor: z.string().min(8, { message: "Nomor telepon minimal 8 digit" }),
+      gender: z.enum(["LAKI_LAKI", "PEREMPUAN"], {
+        message: "Jenis kelamin harus dipilih (Laki-laki atau Perempuan)",
+      }),
+      tanggal_lahir: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+          message: "Tanggal lahir tidak valid",
+        })
+        .transform((val) => new Date(val)),
     });
 
-    const { email, password, name } = schema.parse(data);
+    // ✅ Validasi Zod
+    const { email, password, name, nomor, gender, tanggal_lahir } = schema.parse(data);
 
-    // Cek apakah user sudah ada
+    // ✅ Cek user sudah ada
     const exist = await prisma.user.findUnique({
       where: { email },
     });
 
     if (exist) {
-      return NextResponse.json({ error: "User already exists" }, { status: 400 });
+      const res = NextResponse.json(
+        { error: "Email sudah terdaftar, gunakan email lain!" },
+        { status: 400 }
+      );
+
+      return res;
     }
 
-    // Hash password
+    // ✅ Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Simpan user baru
     const user = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         name,
-        role: Role.USER,   // default role
-        verifiedAt: null,  // belum diverifikasi
+        nomor,
+        gender: gender as Gender,
+        tanggal_lahir,
+        role: Role.USER,
+        verifiedAt: null,
       },
     });
 
-    // Kirim OTP ke email
-    await fetch(`${process.env.BASE_URL}/api/auth/send-otp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+    // ✅ Jika sukses register → set flash_success
+    const res = NextResponse.json({ success: true }, { status: 200 });
+
+    res.cookies.set("flash_success", "Registrasi berhasil! Silakan login.", {
+      path: "/",
+      maxAge: 10, // detik
     });
 
-    return NextResponse.json({ user });
+    return res;
+
   } catch (error: any) {
     console.error("Register Error:", error);
-    return NextResponse.json({ error: error.message || "Register failed" }, { status: 500 });
+
+    // ✅ Tangani error validasi Zod
+    if (error.name === "ZodError") {
+      const messages = error.issues.map((issue: any) => issue.message);
+      const errorMessage = messages.join(", ");
+
+      const res = NextResponse.json({ error: errorMessage }, { status: 400 });
+
+      // ⛔ Set cookie flash_error untuk validasi gagal
+      res.cookies.set("flash_error", errorMessage, {
+        path: "/",
+        maxAge: 30,
+      });
+
+      return res;
+    }
+
+    const errorMessage = error.message || "Terjadi kesalahan saat registrasi";
+
+    const res = NextResponse.json({ error: errorMessage }, { status: 500 });
+
+    // ⛔ Set cookie flash_error untuk error server
+    res.cookies.set("flash_error", errorMessage, {
+      path: "/",
+      maxAge: 30,
+    });
+
+    return res;
   }
 }
