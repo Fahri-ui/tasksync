@@ -2,7 +2,6 @@ import type React from "react"
 import type { Metadata } from "next"
 import "@/app/globals.css"
 import SessionProviderWrapper from "@/components/SessionProviderWraper"
-import FlashMassage from "@/components/FlashMassage"
 
 export const metadata: Metadata = {
   title: "TaskSync",
@@ -18,7 +17,6 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <SessionProviderWrapper>
-          <FlashMassage />
           {children}
         </SessionProviderWrapper>
       </body>

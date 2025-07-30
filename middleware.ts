@@ -22,7 +22,7 @@ export async function middleware(req: NextRequest) {
         "Anda harus login untuk mengakses halaman terkait!",
         {
           path: "/",
-          maxAge: 7, 
+          maxAge: 30, 
         }
       );
 
@@ -48,7 +48,7 @@ export async function middleware(req: NextRequest) {
         "Anda sudah login, Silahkan Logout untuk akses halaman terkait!",
         {
           path: "/",
-          maxAge: 7,
+          maxAge: 30,
         }
       );
 
@@ -65,7 +65,7 @@ export async function middleware(req: NextRequest) {
         "Anda tidak memiliki akses ke halaman admin terkait!",
         {
           path: "/",
-          maxAge: 7,
+          maxAge: 30,
         }
       );
 
@@ -82,7 +82,7 @@ export async function middleware(req: NextRequest) {
         "Anda tidak memiliki akses ke halaman user terkait!",
         {
           path: "/",
-          maxAge: 7,
+          maxAge: 30,
         }
       );
 

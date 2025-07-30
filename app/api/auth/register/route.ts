@@ -59,13 +59,14 @@ export async function POST(req: Request) {
     });
 
     // ✅ Jika sukses register → set flash_success
-    const res = NextResponse.json({ success: true }, { status: 200 });
-
-    res.cookies.set("flash_success", "Registrasi berhasil! Silakan login.", {
+    const res = NextResponse.json(
+      { success: true, message: "Registrasi berhasil! Silakan login." },
+      { status: 200 }
+    );
+    res.cookies.set("flash_success", "Registrasi berhasil! Silakan verifikasi email anda.", {
       path: "/",
-      maxAge: 10, // detik
+      maxAge: 30,
     });
-
     return res;
 
   } catch (error: any) {
@@ -75,15 +76,7 @@ export async function POST(req: Request) {
     if (error.name === "ZodError") {
       const messages = error.issues.map((issue: any) => issue.message);
       const errorMessage = messages.join(", ");
-
       const res = NextResponse.json({ error: errorMessage }, { status: 400 });
-
-      // ⛔ Set cookie flash_error untuk validasi gagal
-      res.cookies.set("flash_error", errorMessage, {
-        path: "/",
-        maxAge: 30,
-      });
-
       return res;
     }
 

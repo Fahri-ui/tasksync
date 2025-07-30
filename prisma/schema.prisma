@@ -23,23 +23,23 @@ model User {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  // Kolom tambahan
-  nomor         String?     // Nomor telepon opsional
-  gender        Gender?     // Enum gender
-  tanggal_lahir DateTime?   // Tanggal lahir opsional
+  
+  nomor         String?     
+  gender        Gender?     
+  tanggal_lahir DateTime?   
 
-  // Relasi OTP
+  
   otps Otp[]
 
-  // Relasi untuk sistem pertemanan
+  
   sentFriendships     Friendship[] @relation("FriendshipRequester")
   receivedFriendships Friendship[] @relation("FriendshipAddressee")
 
-  // Relasi untuk proyek
+  
   createdProjects Project[] @relation("ProjectCreator")
   projectMembers  ProjectMember[]
 
-  // Relasi untuk tugas
+  
   assignedTasks Task[] @relation("TaskAssignee")
 
   @@map("users")

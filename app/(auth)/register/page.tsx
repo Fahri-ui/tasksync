@@ -48,15 +48,28 @@ export default function Page() {
       }),
     });
 
-    const data = await res.json();
+    let data = null;
+    try {
+      data = await res.json();
+    } catch (e) {
+      setAlert({ type: "error", message: "Terjadi kesalahan jaringan.", isShow: true });
+      setIsLoading(false);
+      return;
+    }
 
     if (!res.ok) {
-      const data = await res.json();
-      setAlert({ type: "error", message: data.error, isShow: true });
-    } else {
-      router.push("/verify");
+      // Tangani error email sudah terdaftar
+      if (data && data.error && data.error.toLowerCase().includes("email sudah terdaftar")) {
+        setAlert({ type: "error", message: data.error, isShow: true });
+        setIsLoading(false);
+        return;
+      }
+      setAlert({ type: "error", message: data.error || "Registrasi gagal.", isShow: true });
+      setIsLoading(false);
+      return;
     }
-    
+
+    router.push("/verify");
     setIsLoading(false);
   };
 

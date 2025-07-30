@@ -1,5 +1,6 @@
 import type React from "react"
-import { UserNavbar } from "@/components/user/navbar"
+import { AppSidebar } from "@/components/user/navbar"
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 
 export default function UserLayout({
   children,
@@ -7,9 +8,9 @@ export default function UserLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <UserNavbar />
-      <div className="flex-1 lg:ml-0">{children}</div>
-    </div>
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>{children}</SidebarInset>
+    </SidebarProvider>
   )
 }

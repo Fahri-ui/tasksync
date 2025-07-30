@@ -7,5 +7,8 @@ export async function POST() {
   response.cookies.set("next-auth.session-token", "", { maxAge: 0 });
   response.cookies.set("__Secure-next-auth.session-token", "", { maxAge: 0 });
 
+  // Set flash_success agar bisa ditangkap oleh FlashMassage
+  response.cookies.set("flash_success", encodeURIComponent("Logout berhasil!"), { path: "/", maxAge: 10 });
+
   return response;
 }
