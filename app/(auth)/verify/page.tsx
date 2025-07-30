@@ -8,15 +8,23 @@ export default function SignIn() {
   const [otp, setOtp] = useState("");
   const [step, setStep] = useState(1);
   const [isSending, setIsSending] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   // ✅ Fungsi set cookie flash message agar bisa dibaca FlashMessage.tsx
   const setFlashMessage = (type: "flash_success" | "flash_error", message: string) => {
-    document.cookie = `${type}=${encodeURIComponent(message)}; path=/; max-age=10`; 
+    document.cookie = `${type}=${encodeURIComponent(message)}; path=/; max-age=10`;
   };
 
   const sendOtp = async () => {
+    setEmailError(null);
     if (!email) {
-      setFlashMessage("flash_error", "Email tidak boleh kosong!");
+      setEmailError("Email tidak boleh kosong!");
+      return;
+    }
+    // Validasi format email sederhana
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setEmailError("Format email tidak valid!");
       return;
     }
 
@@ -33,11 +41,15 @@ export default function SignIn() {
     if (res.ok) {
       // ✅ Kirim flash message sukses
       setFlashMessage("flash_success", "Kode OTP telah dikirim ke email Anda.");
-
       // ✅ Lanjut ke step 2
       setStep(2);
     } else {
       const data = await res.json();
+      // Tangani error email tidak ditemukan
+      if (data.message && data.message.toLowerCase().includes("not found")) {
+        setEmailError("Email tidak ditemukan");
+        return;
+      }
       setFlashMessage("flash_error", data.message || "Gagal mengirim OTP");
       // Tetap di step 1
     }
@@ -59,7 +71,7 @@ export default function SignIn() {
 
     if (res.ok) {
       // ✅ Berhasil verifikasi OTP
-      setFlashMessage("flash_success", "Login berhasil! Anda akan diarahkan ke halaman login.");
+      setFlashMessage("flash_success", "Verifikasi berhasil! Silakan login.");
       // Redirect ke halaman login setelah beberapa saat (biar flash muncul dulu)
       setTimeout(() => {
         router.push("/login");
@@ -91,8 +103,8 @@ export default function SignIn() {
                   id="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="nama@perusahaan.com"
-                  className="bg-gray-50/50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent block w-full p-4 transition-all duration-300 placeholder-gray-500"
+                  placeholder="ketikan email disini"
+                  className={`bg-gray-50/50 border ${emailError ? 'border-red-500' : 'border-gray-200'} text-gray-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent block w-full p-4 transition-all duration-300 placeholder-gray-500`}
                 />
                 <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
                   <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -100,6 +112,9 @@ export default function SignIn() {
                   </svg>
                 </div>
               </div>
+              {emailError && (
+                <p className="text-red-600 text-xs mt-2">{emailError}</p>
+              )}
             </div>
 
             <button
@@ -130,16 +145,7 @@ export default function SignIn() {
                   </svg>
                 </div>
                 <div className="text-sm text-gray-700">
-                  <p className="mb-2">Cek email Anda. Jika belum dapat kode, kirim ulang.</p>
-                  <p>
-                    Jika sudah punya kode,{" "}
-                    <button
-                      onClick={() => setStep(2)}
-                      className="font-semibold text-blue-600 hover:text-blue-700 underline transition-colors"
-                    >
-                      klik di sini untuk verifikasi
-                    </button>
-                  </p>
+                  <p className="mb-2">Kirim kan email anda untuk mendapatkan kode otp.</p>
                 </div>
               </div>
             </div>

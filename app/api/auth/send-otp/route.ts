@@ -32,8 +32,8 @@ export async function POST(req: Request) {
   await transporter.sendMail({
     from: process.env.EMAIL_FROM,
     to: email,
-    subject: "Your OTP Code",
-    text: `Your OTP is ${otp}. It will expire in 10 minutes.`,
+    subject: "Kode Otp Anda",
+    text: `Kode Otp anda adalah ${otp}. hanya berlaku selama 10 menit.`,
   });
 
   return Response.json({ message: "OTP sent" });
