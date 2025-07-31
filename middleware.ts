@@ -19,7 +19,7 @@ export async function middleware(req: NextRequest) {
 
       redirectResponse.cookies.set(
         "flash_error",
-        "Anda harus login untuk mengakses halaman terkait!",
+        "Anda harus login untuk mengakses halaman terkait !",
         {
           path: "/",
           maxAge: 30, 
@@ -45,7 +45,7 @@ export async function middleware(req: NextRequest) {
 
       redirectResponse.cookies.set(
         "flash_error",
-        "Anda sudah login, Silahkan Logout untuk akses halaman terkait!",
+        "Anda sudah login, Silahkan Logout untuk akses halaman terkait !",
         {
           path: "/",
           maxAge: 30,
@@ -62,7 +62,7 @@ export async function middleware(req: NextRequest) {
 
       redirectResponse.cookies.set(
         "flash_error",
-        "Anda tidak memiliki akses ke halaman admin terkait!",
+        "Anda tidak memiliki akses ke halaman admin !",
         {
           path: "/",
           maxAge: 30,

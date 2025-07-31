@@ -1,36 +1,76 @@
-"use client"
-
-import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
-import { UserHeader } from "@/components/user/header"
-import { dummyProjects, dummyTasks } from "@/lib/dummy-data"
-import Link from "next/link"
-import { ArrowLeft, Calendar, CheckCircle2, Folder, Info, ListTodo, User } from "lucide-react"
+// app/user/proyek-saya/[id]/page.tsx
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import prisma from "@/lib/prisma";
+import { notFound } from "next/navigation";
+import { UserHeader } from "@/components/user/header";
+import Link from "next/link";
+import { ArrowLeft, Calendar, CheckCircle2, Folder, Info, ListTodo, User } from "lucide-react";
 
 interface ProjectDetailPageProps {
   params: {
-    id: string
-  }
+    id: string;
+  };
 }
 
-export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
-  const { data: session, status } = useSession()
-  const router = useRouter()
-  const projectId = params.id
+export default async function ProjectDetailPage({ params }: ProjectDetailPageProps) {
+  const { id } = params;
 
+  // 1. Cek session
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return notFound(); // Atau redirect ke login
+  }
 
-  const project = dummyProjects.find((p) => p.id.toString() === projectId)
-  const projectTasks = dummyTasks.filter((task) => task.project === project?.name)
+  const userId = session.user.id;
+
+  // 2. Ambil proyek beserta relasi
+  const project = await prisma.project.findFirst({
+    where: {
+      id,
+      OR: [
+        { creatorId: userId }, // Creator
+        { members: { some: { userId } } }, // Member
+      ],
+    },
+    include: {
+      creator: {
+        select: {
+          name: true,
+        },
+      },
+      members: {
+        include: {
+          user: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
+      tasks: {
+        include: {
+          assignedUser: {
+            select: {
+              name: true,
+            },
+          },
+        },
+        orderBy: {
+          deadline: "asc",
+        },
+      },
+    },
+  });
 
   if (!project) {
-    // Handle project not found
     return (
       <>
         <UserHeader title="Proyek Tidak Ditemukan" />
         <main className="p-4 sm:p-6 lg:p-8 flex flex-col items-center justify-center min-h-[calc(100vh-120px)]">
           <div className="text-center bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
             <h3 className="text-2xl font-bold text-gray-900 mb-4">Proyek Tidak Ditemukan 😔</h3>
-            <p className="text-gray-600 mb-6">Maaf, proyek dengan ID &quot;{projectId}&quot; tidak dapat ditemukan.</p>
+            <p className="text-gray-600 mb-6">Maaf, proyek dengan ID "{id}" tidak dapat ditemukan.</p>
             <Link
               href="/user/proyek-saya"
               className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
@@ -41,47 +81,46 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
           </div>
         </main>
       </>
-    )
+    );
+  }
+
+  // Hitung progress
+  const totalTasks = project.tasks.length;
+  const completedTasks = project.tasks.filter((t) => t.status === "SELESAI").length;
+  const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+
+  // Status proyek
+  let projectStatus: "aktif" | "selesai" | "tertunda" = "aktif";
+  if (progress === 100) {
+    projectStatus = "selesai";
+  } else if (new Date(project.deadline) < new Date()) {
+    projectStatus = "tertunda";
   }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "aktif":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800";
       case "selesai":
-        return "bg-blue-100 text-blue-800"
+        return "bg-blue-100 text-blue-800";
       case "tertunda":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-100 text-yellow-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
-  const getPriorityBadge = (priority: string) => {
-    switch (priority) {
-      case "tinggi":
-        return "bg-red-100 text-red-800"
-      case "sedang":
-        return "bg-yellow-100 text-yellow-800"
-      case "rendah":
-        return "bg-green-100 text-green-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
-
-  const getDaysUntilDeadline = (deadline: string) => {
-    const days = Math.ceil((new Date(deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-    if (days < 0) return "Terlambat"
-    if (days === 0) return "Hari ini"
-    if (days === 1) return "Besok"
-    return `${days} hari lagi`
-  }
+  const getDaysUntilDeadline = (deadline: Date) => {
+    const days = Math.ceil((deadline.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+    if (days < 0) return "Terlambat";
+    if (days === 0) return "Hari ini";
+    if (days === 1) return "Besok";
+    return `${days} hari lagi`;
+  };
 
   return (
     <>
       <UserHeader title={`Detail Proyek: ${project.name}`} />
-
       <main className="p-4 sm:p-6 lg:p-8">
         <div className="space-y-6">
           {/* Back Button */}
@@ -103,16 +142,14 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                 {project.name}
               </h3>
               <span
-                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(project.status)}`}
+                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(projectStatus)}`}
               >
-                {project.status === "aktif" && "🟢 Aktif"}
-                {project.status === "selesai" && "✅ Selesai"}
-                {project.status === "tertunda" && "⏸️ Tertunda"}
+                {projectStatus === "aktif" && "🟢 Aktif"}
+                {projectStatus === "selesai" && "✅ Selesai"}
+                {projectStatus === "tertunda" && "⏸️ Tertunda"}
               </span>
             </div>
-
             <p className="text-gray-700 mb-6">{project.description}</p>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="flex items-center text-gray-600">
                 <Calendar className="w-5 h-5 mr-2 text-gray-500" />
@@ -125,7 +162,7 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
               </div>
               <div className="flex items-center text-gray-600">
                 <User className="w-5 h-5 mr-2 text-gray-500" />
-                <span className="font-medium">Manajer:</span> {project.manager}
+                <span className="font-medium">Manajer:</span> {project.creator.name}
               </div>
             </div>
 
@@ -135,10 +172,10 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
               <div className="w-full bg-gray-200 rounded-full h-3">
                 <div
                   className="bg-blue-600 h-3 rounded-full transition-all duration-500 ease-out"
-                  style={{ width: `${project.progress}%` }}
+                  style={{ width: `${progress}%` }}
                 ></div>
               </div>
-              <p className="text-right text-sm text-gray-600 mt-1">{project.progress}% Selesai</p>
+              <p className="text-right text-sm text-gray-600 mt-1">{progress}% Selesai</p>
             </div>
 
             {/* Action Buttons (Optional) */}
@@ -159,12 +196,12 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
               Tugas-tugas dalam Proyek Ini
             </h4>
             <div className="space-y-4">
-              {projectTasks.length > 0 ? (
-                projectTasks.map((task) => (
+              {project.tasks.length > 0 ? (
+                project.tasks.map((task) => (
                   <div
                     key={task.id}
                     className={`p-4 rounded-lg border-2 transition-all ${
-                      task.status === "selesai"
+                      task.status === "SELESAI"
                         ? "border-green-200 bg-green-50"
                         : "border-gray-200 bg-white hover:border-blue-200"
                     }`}
@@ -174,31 +211,23 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                         {/* Checkbox */}
                         <div
                           className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                            task.status === "selesai" ? "bg-green-500 border-green-500 text-white" : "border-gray-300"
+                            task.status === "SELESAI" ? "bg-green-500 border-green-500 text-white" : "border-gray-300"
                           }`}
                         >
-                          {task.status === "selesai" && <CheckCircle2 className="w-3 h-3" />}
+                          {task.status === "SELESAI" && <CheckCircle2 className="w-3 h-3" />}
                         </div>
-
                         {/* Task Info */}
                         <div className="flex-1">
                           <div className="flex items-center space-x-3 mb-2">
                             <h5
                               className={`font-semibold ${
-                                task.status === "selesai" ? "text-gray-500 line-through" : "text-gray-900"
+                                task.status === "SELESAI" ? "text-gray-500 line-through" : "text-gray-900"
                               }`}
                             >
                               {task.title}
                             </h5>
-                            <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityBadge(task.priority)}`}
-                            >
-                              {task.priority}
-                            </span>
                           </div>
-
                           <p className="text-sm text-gray-600 mb-2">{task.description}</p>
-
                           <div className="flex items-center space-x-4 text-sm text-gray-500">
                             <span className="flex items-center">
                               <Calendar className="w-4 h-4 mr-1" />
@@ -223,15 +252,14 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                             </span>
                             <span className="flex items-center">
                               <User className="w-4 h-4 mr-1" />
-                              {task.assignee}
+                              {task.assignedUser.name}
                             </span>
                           </div>
                         </div>
                       </div>
-
                       {/* Status Icon */}
                       <div className="ml-4">
-                        <span className="text-2xl">{task.status === "selesai" ? "✅" : "⏳"}</span>
+                        <span className="text-2xl">{task.status === "SELESAI" ? "✅" : "⏳"}</span>
                       </div>
                     </div>
                   </div>
@@ -239,9 +267,6 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
               ) : (
                 <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
                   <p className="text-gray-500 mb-2">Tidak ada tugas yang terkait dengan proyek ini.</p>
-                  <p className="text-sm text-gray-400">
-                    Anda bisa menambahkan tugas baru melalui halaman 'Buat Proyek Baru'.
-                  </p>
                 </div>
               )}
             </div>
@@ -249,5 +274,5 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
         </div>
       </main>
     </>
-  )
+  );
 }

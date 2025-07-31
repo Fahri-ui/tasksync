@@ -1,38 +1,252 @@
-"use client"
-
-import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
-import { UserHeader } from "@/components/user/header"
-import { dummyProjects, dummyTasks, dummyUser, dummyUsers } from "@/lib/dummy-data" // Import dummyUsers
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import prisma from "@/lib/prisma"
 import Link from "next/link"
-import { UserRoundCheck } from "lucide-react" // Import Lucide icon for friends
+import { UserRoundCheck } from "lucide-react"
+import { UserHeader } from "@/components/user/header"
 
-export default function DashboardPage() {
-  const { data: session, status } = useSession()
-  const router = useRouter()
-  const user = session?.user
+// Define types for the data fetched for the dashboard
+interface UserData {
+  id: string
+  name: string
+  email: string
+  joinedAt: Date
+  totalProjects: number
+}
 
-  // Filter tugas yang deadline-nya mendekat (3 hari ke depan)
-  const upcomingTasks = dummyTasks.filter((task) => {
-    const taskDeadline = new Date(task.deadline)
+interface TaskData {
+  id: string
+  title: string
+  project: string
+  deadline: Date
+}
+
+interface ProjectData {
+  id: string
+  name: string
+  manager: string
+  progress: number
+}
+
+interface FriendData {
+  id: string
+  name: string
+  email: string
+}
+
+interface DashboardPageData {
+  user: UserData
+  stats: {
+    activeTasks: number
+    completedTasks: number
+    upcomingTasksCount: number
+  }
+  upcomingTasks: TaskData[]
+  recentProjects: ProjectData[]
+  myFriends: FriendData[]
+}
+
+export default async function DashboardPage() {
+  const session = await getServerSession(authOptions)
+
+  if (!session || !session.user?.id) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-lg text-gray-600">Anda tidak memiliki akses. Silakan login.</p>
+      </div>
+    )
+  }
+
+  const userId = session.user.id
+
+  let dashboardData: DashboardPageData = {
+    user: {
+      id: "",
+      name: "Pengguna",
+      email: "",
+      joinedAt: new Date(),
+      totalProjects: 0,
+    },
+    stats: {
+      activeTasks: 0,
+      completedTasks: 0,
+      upcomingTasksCount: 0,
+    },
+    upcomingTasks: [],
+    recentProjects: [],
+    myFriends: [],
+  }
+
+  try {
+    // 1. Fetch User Details
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        createdAt: true,
+      },
+    })
+
+    if (!user) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <p className="text-lg text-gray-600">Data pengguna tidak ditemukan.</p>
+        </div>
+      )
+    }
+
+    // 2. Fetch Project & Task Statistics
+    const totalProjects = await prisma.projectMember.count({
+      where: { userId: userId },
+    })
+
+    const activeTasks = await prisma.task.count({
+      where: {
+        assignedTo: userId,
+        status: "BELUM_SELESAI",
+      },
+    })
+
+    const completedTasks = await prisma.task.count({
+      where: {
+        assignedTo: userId,
+        status: "SELESAI",
+      },
+    })
+
+    // Calculate upcoming tasks (within 3 days from now)
     const today = new Date()
     const threeDaysFromNow = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000)
-    return taskDeadline <= threeDaysFromNow && task.status === "belum_selesai"
-  })
 
-  // Proyek terakhir yang dikerjakan
-  const recentProjects = dummyProjects.filter((project) => project.status === "aktif").slice(0, 3)
+    const upcomingTasksList = await prisma.task.findMany({
+      where: {
+        assignedTo: userId,
+        status: "BELUM_SELESAI",
+        deadline: {
+          lte: threeDaysFromNow,
+        },
+      },
+      include: {
+        project: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        deadline: "asc",
+      },
+      take: 3, // Limit to 3 for dashboard display
+    })
 
-  const completedTasks = dummyTasks.filter((task) => task.status === "selesai").length
-  const activeTasks = dummyTasks.filter((task) => task.status === "belum_selesai").length
+    // 3. Fetch Recent Projects
+    const recentProjects = await prisma.projectMember.findMany({
+      where: { userId: userId },
+      include: {
+        project: {
+          include: {
+            creator: {
+              select: {
+                name: true,
+              },
+            },
+            tasks: {
+              select: {
+                id: true,
+                status: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        joinedAt: "desc", // Order by when the user joined the project
+      },
+      take: 3, // Limit to 3 for dashboard display
+    })
 
-  // Filter teman
-  const myFriends = dummyUsers.filter((u) => u.isFriend).slice(0, 3) // Ambil 3 teman pertama
+    // Map recent projects to include manager name and calculate progress
+    const formattedRecentProjects = recentProjects.map((pm) => {
+      const totalProjectTasks = pm.project.tasks.length
+      const completedProjectTasks = pm.project.tasks.filter((task) => task.status === "SELESAI").length
+      const progress = totalProjectTasks > 0 ? Math.round((completedProjectTasks / totalProjectTasks) * 100) : 0
+
+      return {
+        id: pm.project.id,
+        name: pm.project.name,
+        manager: pm.project.creator.name,
+        progress: progress,
+      }
+    })
+
+    // 4. Fetch Friends
+    const friendships = await prisma.friendship.findMany({
+      where: {
+        OR: [{ requesterId: userId }, { addresseeId: userId }],
+      },
+      include: {
+        requester: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        addressee: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    })
+
+    const myFriends = friendships
+      .map((friendship) => {
+        // Return the user who is NOT the current user
+        return friendship.requesterId === userId ? friendship.addressee : friendship.requester
+      })
+      .slice(0, 3) // Limit to 3 for dashboard display
+
+    dashboardData = {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        joinedAt: user.createdAt,
+        totalProjects: totalProjects,
+      },
+      stats: {
+        activeTasks: activeTasks,
+        completedTasks: completedTasks,
+        upcomingTasksCount: upcomingTasksList.length,
+      },
+      upcomingTasks: upcomingTasksList.map((task) => ({
+        id: task.id,
+        title: task.title,
+        project: task.project.name,
+        deadline: task.deadline,
+      })),
+      recentProjects: formattedRecentProjects,
+      myFriends: myFriends,
+    }
+  } catch (error) {
+    console.error("Error fetching dashboard data:", error)
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-lg text-red-600">Terjadi kesalahan saat memuat data dashboard.</p>
+      </div>
+    )
+  }
+
+  const { user, stats, upcomingTasks, recentProjects, myFriends } = dashboardData
 
   return (
     <>
-      <UserHeader title="Dashboard" />
-
+      <UserHeader title="Dashboard"/>
       <main className="p-4 sm:p-6 lg:p-8">
         <div className="space-y-6">
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white">
@@ -43,19 +257,18 @@ export default function DashboardPage() {
                 <div className="mt-4 flex items-center space-x-4">
                   <span className="px-3 py-1 bg-white/20 rounded-full text-sm font-medium">
                     📅 Bergabung sejak{" "}
-                    {new Date(dummyUser.joinedAt).toLocaleDateString("id-ID", { month: "long", year: "numeric" })}
+                    {new Date(user.joinedAt).toLocaleDateString("id-ID", { month: "long", year: "numeric" })}
                   </span>
                 </div>
               </div>
             </div>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 mb-1">📊 Proyek Diikuti</p>
-                  <p className="text-2xl font-bold text-gray-900">{dummyUser.totalProjects}</p>
+                  <p className="text-2xl font-bold text-gray-900">{user.totalProjects}</p>
                 </div>
                 <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
                   <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -69,12 +282,11 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 mb-1">⏳ Tugas Berjalan</p>
-                  <p className="text-2xl font-bold text-gray-900">{activeTasks}</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.activeTasks}</p>
                 </div>
                 <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
                   <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,12 +300,11 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 mb-1">✅ Tugas Selesai</p>
-                  <p className="text-2xl font-bold text-gray-900">{completedTasks}</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.completedTasks}</p>
                 </div>
                 <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
                   <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -107,12 +318,11 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 mb-1">🔔 Deadline Tugas</p>
-                  <p className="text-2xl font-bold text-gray-900">{upcomingTasks.length}</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.upcomingTasksCount}</p>
                 </div>
                 <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
                   <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -127,7 +337,6 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-center justify-between mb-4">
@@ -138,7 +347,7 @@ export default function DashboardPage() {
               </div>
               <div className="space-y-3">
                 {upcomingTasks.length > 0 ? (
-                  upcomingTasks.slice(0, 3).map((task) => (
+                  upcomingTasks.map((task) => (
                     <div
                       key={task.id}
                       className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-100"
@@ -151,17 +360,6 @@ export default function DashboardPage() {
                         <p className="text-sm font-medium text-red-600">
                           {new Date(task.deadline).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
                         </p>
-                        <span
-                          className={`px-2 py-1 text-xs rounded-full ${
-                            task.priority === "tinggi"
-                              ? "bg-red-100 text-red-800"
-                              : task.priority === "sedang"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-green-100 text-green-800"
-                          }`}
-                        >
-                          {task.priority}
-                        </span>
                       </div>
                     </div>
                   ))
@@ -172,7 +370,6 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
-
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h4 className="text-lg font-semibold text-gray-900">🔗 Proyek Terakhir</h4>
@@ -201,7 +398,6 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-lg font-semibold text-gray-900">
@@ -238,7 +434,6 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
-
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <h4 className="text-lg font-semibold text-gray-900 mb-4">📅 Kalender Mini</h4>
             <div className="grid grid-cols-7 gap-2 text-center">
