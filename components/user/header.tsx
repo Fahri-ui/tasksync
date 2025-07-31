@@ -11,7 +11,7 @@ export function UserHeader({ title }: HeaderProps) {
   const user = session?.user
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 px-4 sm:px-6  py-4">
+    <header className="bg-white shadow-sm border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4 ml-12 lg:ml-0">
           <h2 className="text-xl font-bold text-gray-900 capitalize">{title}</h2>
