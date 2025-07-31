@@ -30,7 +30,7 @@ export default function ProyekSayaPage() {
     const fetchProjects = async () => {
       setLoading(true);
       try {
-        const res = await fetch("/api/user/proyek");
+        const res = await fetch("/api/users/proyek");
         if (!res.ok) {
           throw new Error("Gagal memuat data proyek");
         }

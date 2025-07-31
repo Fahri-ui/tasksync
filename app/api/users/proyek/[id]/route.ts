@@ -1,0 +1,91 @@
+// app/api/user/proyek/[id]/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import prisma from "@/lib/prisma";
+
+// GET: Ambil detail proyek
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userId = session.user.id;
+    const projectId = params.id;
+
+    const project = await prisma.project.findFirst({
+      where: {
+        id: projectId,
+        OR: [
+          { creatorId: userId },
+          { members: { some: { userId } } },
+        ],
+      },
+      include: {
+        creator: { select: { name: true } },
+        tasks: {
+          include: {
+            assignedUser: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    if (!project) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(project);
+  } catch (error) {
+    console.error("Error fetching project:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
+// DELETE: Hapus proyek (hanya creator)
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userId = session.user.id;
+    const projectId = params.id;
+
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { creatorId: true },
+    });
+
+    if (!project) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+
+    if (project.creatorId !== userId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    await prisma.project.delete({
+      where: { id: projectId },
+    });
+
+    const res = NextResponse.json({ success: true }, { status: 200 });
+    res.cookies.set("flash_success", "Proyek berhasil dihapus.", {
+      path: "/",
+      maxAge: 30,
+    });
+    return res;
+  } catch (error) {
+    console.error("Error deleting project:", error);
+    return NextResponse.json({ error: "Failed to delete project" }, { status: 500 });
+  }
+}

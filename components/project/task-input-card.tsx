@@ -1,16 +1,22 @@
-"use client"
+// components/project/task-input-card.tsx
+"use client";
 
-import type { Task } from "@/lib/dummy-data"
-import { dummyUsers } from "@/lib/dummy-data" // Import dummyUsers
-import { Trash2 } from "lucide-react"
+import { Trash2 } from "lucide-react";
 
 interface TaskInputCardProps {
-  task: Partial<Task> & { tempId: string } // tempId for unique key before actual ID
-  onUpdate: (tempId: string, field: keyof Task, value: string) => void
-  onDelete: (tempId: string) => void
+  task: {
+    tempId: string;
+    title: string;
+    description: string;
+    deadline: string;
+    assignedTo: string;
+  };
+  onUpdate: (tempId: string, field: string, value: string) => void;
+  onDelete: (tempId: string) => void;
+  friends: { id: string; name: string }[]; // Daftar teman
 }
 
-export function TaskInputCard({ task, onUpdate, onDelete }: TaskInputCardProps) {
+export function TaskInputCard({ task, onUpdate, onDelete, friends }: TaskInputCardProps) {
   return (
     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-3">
       <div className="flex justify-between items-center">
@@ -30,7 +36,7 @@ export function TaskInputCard({ task, onUpdate, onDelete }: TaskInputCardProps) 
         <input
           id={`task-title-${task.tempId}`}
           type="text"
-          value={task.title || ""}
+          value={task.title}
           onChange={(e) => onUpdate(task.tempId, "title", e.target.value)}
           placeholder="Contoh: Desain UI Dashboard"
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
@@ -43,7 +49,7 @@ export function TaskInputCard({ task, onUpdate, onDelete }: TaskInputCardProps) 
         </label>
         <textarea
           id={`task-description-${task.tempId}`}
-          value={task.description || ""}
+          value={task.description}
           onChange={(e) => onUpdate(task.tempId, "description", e.target.value)}
           placeholder="Detail tugas yang perlu dikerjakan"
           rows={2}
@@ -58,50 +64,32 @@ export function TaskInputCard({ task, onUpdate, onDelete }: TaskInputCardProps) 
           <input
             id={`task-deadline-${task.tempId}`}
             type="date"
-            value={task.deadline || ""}
+            value={task.deadline}
             onChange={(e) => onUpdate(task.tempId, "deadline", e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             required
           />
         </div>
         <div>
-          <label htmlFor={`task-priority-${task.tempId}`} className="block text-sm font-medium text-gray-700 mb-1">
-            Prioritas
-          </label>
-          <select
-            id={`task-priority-${task.tempId}`}
-            value={task.priority || ""}
-            onChange={(e) => onUpdate(task.tempId, "priority", e.target.value as Task["priority"])}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            required
-          >
-            <option value="">Pilih Prioritas</option>
-            <option value="tinggi">Tinggi</option>
-            <option value="sedang">Sedang</option>
-            <option value="rendah">Rendah</option>
-          </select>
-        </div>
-        {/* New: Penanggung Jawab Input */}
-        <div>
           <label htmlFor={`task-assignee-${task.tempId}`} className="block text-sm font-medium text-gray-700 mb-1">
             Penanggung Jawab
           </label>
           <select
             id={`task-assignee-${task.tempId}`}
-            value={task.assignee || ""}
-            onChange={(e) => onUpdate(task.tempId, "assignee", e.target.value)}
+            value={task.assignedTo}
+            onChange={(e) => onUpdate(task.tempId, "assignedTo", e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             required
           >
-            <option value="">Pilih Penanggung Jawab</option>
-            {dummyUsers.map((user) => (
-              <option key={user.id} value={user.name}>
-                {user.name}
+            <option value="">Pilih Teman</option>
+            {friends.map((friend) => (
+              <option key={friend.id} value={friend.id}>
+                {friend.name}
               </option>
             ))}
           </select>
         </div>
       </div>
     </div>
-  )
+  );
 }

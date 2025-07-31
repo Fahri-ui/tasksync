@@ -1,76 +1,92 @@
-"use client"
+"use client";
 
-import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
-import { useState, useEffect } from "react"
-import { UserHeader } from "@/components/user/header"
-import { UserPlus, UserCheck, Users } from "lucide-react"
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { UserHeader } from "@/components/user/header";
+import { UserPlus, UserCheck, Users } from "lucide-react";
 
-// Define types for the fetched data
 interface UserData {
-  id: string
-  name: string
-  email: string
-  isFriend: boolean
+  id: string;
+  name: string;
+  email: string;
+  isFriend: boolean;
 }
 
 export default function PertemananPage() {
-  const { data: session, status } = useSession()
-  const router = useRouter()
-  const [searchTerm, setSearchTerm] = useState("")
-  const [users, setUsers] = useState<UserData[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Redirect if not authenticated
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.push("/login") // Adjust your login page path
+      router.push("/login");
     }
-  }, [status, router])
+  }, [status, router]);
 
-  // Fetch data from API
   useEffect(() => {
     const fetchUsers = async () => {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
       try {
-        const response = await fetch(`/api/users/pertemanan?search=${searchTerm}`)
+        const response = await fetch(`/api/users/pertemanan?search=${searchTerm}`);
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const data = await response.json()
-        setUsers(data.users)
+        const data = await response.json();
+        setUsers(data.users);
       } catch (err: any) {
-        setError(err.message || "Gagal memuat data pengguna.")
-        console.error("Failed to fetch users:", err)
+        setError(err.message || "Gagal memuat data pengguna.");
+        console.error("Failed to fetch users:", err);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
     if (status === "authenticated") {
-      fetchUsers()
+      fetchUsers();
     }
-  }, [searchTerm, status]) // Refetch when searchTerm changes or auth status becomes authenticated
+  }, [searchTerm, status]);
 
-  const handleAddFriend = (userId: string) => {
-    // TODO: Implement API call to add/remove friend
-    // For now, just toggle UI state
-    setUsers((prevUsers) =>
-      prevUsers.map((user) => (user.id === userId ? { ...user, isFriend: !user.isFriend } : user)),
-    )
-    console.log(`Toggle pertemanan untuk user ID: ${userId}`)
-  }
+  const handleAddFriend = async (userId: string) => {
+    try {
+      const response = await fetch("/api/users/pertemanan", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ friendId: userId }),
+      });
 
-  // User data for UserHeader (assuming it's a client component and needs user info)
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Gagal mengubah status pertemanan");
+      }
+
+      setUsers((prevUsers) =>
+        prevUsers.map((user) =>
+          user.id === userId
+            ? { ...user, isFriend: data.isFriend }
+            : user
+        )
+      );
+    } catch (err: any) {
+      console.error("Error updating friendship:", err);
+      alert("Gagal: " + err.message);
+    }
+  };
+
   const userForHeader = session?.user
     ? {
         id: session.user.id || "",
         name: session.user.name || "Pengguna",
         email: session.user.email || "",
-        joinedAt: new Date(), // This would ideally come from a user fetch, but for now, a placeholder
-        totalProjects: 0, // Not relevant for this page, can be 0
+        joinedAt: new Date(),
+        totalProjects: 0,
       }
     : {
         id: "",
@@ -78,7 +94,7 @@ export default function PertemananPage() {
         email: "",
         joinedAt: new Date(),
         totalProjects: 0,
-      }
+      };
 
   return (
     <>
@@ -92,7 +108,6 @@ export default function PertemananPage() {
                 <h3 className="text-xl font-bold text-gray-900">🤝 Daftar Pengguna</h3>
                 <p className="text-gray-600 mt-1">Temukan dan tambahkan teman baru di TaskSync</p>
               </div>
-              {/* Search Input */}
               <div className="relative w-full sm:w-auto">
                 <svg
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
@@ -117,6 +132,7 @@ export default function PertemananPage() {
               </div>
             </div>
           </div>
+
           {/* User List */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {users.length > 0 ? (
@@ -164,5 +180,5 @@ export default function PertemananPage() {
         </div>
       </main>
     </>
-  )
+  );
 }

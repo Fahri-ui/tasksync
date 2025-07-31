@@ -89,8 +89,8 @@ export default function SignIn() {
         {step === 1 && (
           <div className="space-y-6">
             <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Masuk dengan Email</h2>
-              <p className="text-gray-600">Dapatkan kode OTP untuk masuk ke akun Anda</p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Verifikasi email</h2>
+              <p className="text-gray-600">Kirim kan email anda untuk mendapatkan kode otp.</p>
             </div>
 
             <div>
@@ -139,13 +139,8 @@ export default function SignIn() {
 
             <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-xl border border-green-200">
               <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0">
-                  <svg className="w-5 h-5 text-green-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="text-sm text-gray-700">
-                  <p className="mb-2">Kirim kan email anda untuk mendapatkan kode otp.</p>
+                <div className="text-sm text-gray-700 ">
+                  <p className="mb-2">Verifikasi email dengan kode otp</p>
                 </div>
               </div>
             </div>

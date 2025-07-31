@@ -1,76 +1,179 @@
 // app/user/proyek-saya/[id]/page.tsx
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import prisma from "@/lib/prisma";
-import { notFound } from "next/navigation";
+"use client";
+
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { UserHeader } from "@/components/user/header";
 import Link from "next/link";
-import { ArrowLeft, Calendar, CheckCircle2, Folder, Info, ListTodo, User } from "lucide-react";
+import { ArrowLeft, Calendar, CheckCircle2, Folder, Info, ListTodo, User, Trash2, Pencil } from "lucide-react";
 
-interface ProjectDetailPageProps {
-  params: {
-    id: string;
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  deadline: string;
+  status: "BELUM_SELESAI" | "SELESAI";
+  assignedUser: {
+    name: string;
   };
 }
 
-export default async function ProjectDetailPage({ params }: ProjectDetailPageProps) {
-  const { id } = params;
+interface Project {
+  id: string;
+  name: string;
+  description: string;
+  deadline: string;
+  creator: {
+    name: string;
+  };
+  tasks: Task[];
+}
 
-  // 1. Cek session
-  const session = await getServerSession(authOptions);
-  if (!session || !session.user) {
-    return notFound(); // Atau redirect ke login
+export default function ProjectDetailPage({ params }: { params: { id: string } }) {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const { id } = params;
+  const [project, setProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    } else if (status === "authenticated" && id) {
+      fetchProject();
+    }
+  }, [status, id, router]);
+
+  const fetchProject = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/user/proyek/${id}`);
+      if (!res.ok) throw new Error("Gagal memuat proyek");
+      const data = await res.json();
+      setProject(data);
+    } catch (err) {
+      setError("Proyek tidak ditemukan atau Anda tidak memiliki akses.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    if (!confirm("Yakin ingin menghapus proyek ini? Semua tugas akan ikut terhapus.")) return;
+
+    try {
+      const res = await fetch(`/api/user/proyek/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) throw new Error("Gagal menghapus proyek");
+
+      // Set flash message via cookie
+      document.cookie = "flash_success=Proyek berhasil dihapus.; path=/; max-age=30";
+
+      router.push("/user/proyek-saya");
+    } catch (err) {
+      alert("Gagal menghapus proyek.");
+    }
+  };
+
+  const handleUpdateTaskStatus = async (taskId: string, currentStatus: string) => {
+    const newStatus = currentStatus === "BELUM_SELESAI" ? "SELESAI" : "BELUM_SELESAI";
+
+    try {
+      const res = await fetch(`/api/user/tugas-saya/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!res.ok) throw new Error("Gagal memperbarui status tugas");
+
+      // Update UI langsung
+      setProject((prev) =>
+        prev
+          ? {
+              ...prev,
+              tasks: prev.tasks.map((task) =>
+                task.id === taskId ? { ...task, status: newStatus } : task
+              ),
+            }
+          : null
+      );
+    } catch (err) {
+      alert("Gagal memperbarui status tugas.");
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm("Yakin ingin menghapus tugas ini?")) return;
+
+    try {
+      const res = await fetch(`/api/user/tugas-saya/${taskId}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) throw new Error("Gagal menghapus tugas");
+
+      // Update UI
+      setProject((prev) =>
+        prev
+          ? {
+              ...prev,
+              tasks: prev.tasks.filter((task) => task.id !== taskId),
+            }
+          : null
+      );
+    } catch (err) {
+      alert("Gagal menghapus tugas.");
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "aktif":
+        return "bg-green-100 text-green-800";
+      case "selesai":
+        return "bg-blue-100 text-blue-800";
+      case "tertunda":
+        return "bg-yellow-100 text-yellow-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getDaysUntilDeadline = (deadline: string) => {
+    const days = Math.ceil(
+      (new Date(deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+    );
+    if (days < 0) return "Terlambat";
+    if (days === 0) return "Hari ini";
+    if (days === 1) return "Besok";
+    return `${days} hari lagi`;
+  };
+
+  if (loading) {
+    return (
+      <>
+        <UserHeader title="Memuat..." />
+        <main className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[calc(100vh-100px)]">
+          <p>Memuat detail proyek...</p>
+        </main>
+      </>
+    );
   }
 
-  const userId = session.user.id;
-
-  // 2. Ambil proyek beserta relasi
-  const project = await prisma.project.findFirst({
-    where: {
-      id,
-      OR: [
-        { creatorId: userId }, // Creator
-        { members: { some: { userId } } }, // Member
-      ],
-    },
-    include: {
-      creator: {
-        select: {
-          name: true,
-        },
-      },
-      members: {
-        include: {
-          user: {
-            select: {
-              name: true,
-            },
-          },
-        },
-      },
-      tasks: {
-        include: {
-          assignedUser: {
-            select: {
-              name: true,
-            },
-          },
-        },
-        orderBy: {
-          deadline: "asc",
-        },
-      },
-    },
-  });
-
-  if (!project) {
+  if (error || !project) {
     return (
       <>
         <UserHeader title="Proyek Tidak Ditemukan" />
         <main className="p-4 sm:p-6 lg:p-8 flex flex-col items-center justify-center min-h-[calc(100vh-120px)]">
           <div className="text-center bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
             <h3 className="text-2xl font-bold text-gray-900 mb-4">Proyek Tidak Ditemukan 😔</h3>
-            <p className="text-gray-600 mb-6">Maaf, proyek dengan ID "{id}" tidak dapat ditemukan.</p>
+            <p className="text-gray-600 mb-6">{error}</p>
             <Link
               href="/user/proyek-saya"
               className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
@@ -97,27 +200,6 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
     projectStatus = "tertunda";
   }
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "aktif":
-        return "bg-green-100 text-green-800";
-      case "selesai":
-        return "bg-blue-100 text-blue-800";
-      case "tertunda":
-        return "bg-yellow-100 text-yellow-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getDaysUntilDeadline = (deadline: Date) => {
-    const days = Math.ceil((deadline.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-    if (days < 0) return "Terlambat";
-    if (days === 0) return "Hari ini";
-    if (days === 1) return "Besok";
-    return `${days} hari lagi`;
-  };
-
   return (
     <>
       <UserHeader title={`Detail Proyek: ${project.name}`} />
@@ -142,7 +224,9 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                 {project.name}
               </h3>
               <span
-                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(projectStatus)}`}
+                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(
+                  projectStatus
+                )}`}
               >
                 {projectStatus === "aktif" && "🟢 Aktif"}
                 {projectStatus === "selesai" && "✅ Selesai"}
@@ -178,13 +262,21 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
               <p className="text-right text-sm text-gray-600 mt-1">{progress}% Selesai</p>
             </div>
 
-            {/* Action Buttons (Optional) */}
+            {/* Action Buttons */}
             <div className="flex space-x-3">
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
-                ✏️ Edit Proyek
-              </button>
-              <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium">
-                🗑️ Hapus Proyek
+              <Link
+                href={`/user/proyek-saya/edit/${id}`}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center"
+              >
+                <Pencil className="w-4 h-4 mr-2" />
+                Edit Proyek
+              </Link>
+              <button
+                onClick={handleDeleteProject}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium flex items-center"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Hapus Proyek
               </button>
             </div>
           </div>
@@ -210,9 +302,12 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                       <div className="flex items-start space-x-4 flex-1">
                         {/* Checkbox */}
                         <div
-                          className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                            task.status === "SELESAI" ? "bg-green-500 border-green-500 text-white" : "border-gray-300"
+                          className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors cursor-pointer ${
+                            task.status === "SELESAI"
+                              ? "bg-green-500 border-green-500 text-white"
+                              : "border-gray-300"
                           }`}
+                          onClick={() => handleUpdateTaskStatus(task.id, task.status)}
                         >
                           {task.status === "SELESAI" && <CheckCircle2 className="w-3 h-3" />}
                         </div>
@@ -242,9 +337,9 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                                 getDaysUntilDeadline(task.deadline) === "Terlambat"
                                   ? "text-red-600 font-medium"
                                   : getDaysUntilDeadline(task.deadline).includes("hari ini") ||
-                                      getDaysUntilDeadline(task.deadline).includes("Besok")
-                                    ? "text-orange-600 font-medium"
-                                    : "text-gray-500"
+                                    getDaysUntilDeadline(task.deadline).includes("Besok")
+                                  ? "text-orange-600 font-medium"
+                                  : "text-gray-500"
                               }`}
                             >
                               <Info className="w-4 h-4 mr-1" />
@@ -257,9 +352,15 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                           </div>
                         </div>
                       </div>
-                      {/* Status Icon */}
-                      <div className="ml-4">
-                        <span className="text-2xl">{task.status === "SELESAI" ? "✅" : "⏳"}</span>
+                      {/* Delete Task */}
+                      <div className="ml-4 flex flex-col space-y-2">
+                        <button
+                          onClick={() => handleDeleteTask(task.id)}
+                          className="text-red-500 hover:text-red-700 transition-colors"
+                          aria-label="Hapus tugas"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
                       </div>
                     </div>
                   </div>
