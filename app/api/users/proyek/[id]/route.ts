@@ -1,16 +1,14 @@
-// app/api/user/proyek/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // ✅ Perbaiki path
 import prisma from "@/lib/prisma";
 
-// GET: Ambil detail proyek
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptions);
     if (!session || !session.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -44,6 +42,68 @@ export async function GET(
   } catch (error) {
     console.error("Error fetching project:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
+
+// Tambahkan PATCH
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userId = session.user.id;
+    const projectId = params.id;
+
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { creatorId: true },
+    });
+
+    if (!project) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+
+    if (project.creatorId !== userId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { name, description, deadline } = await request.json();
+
+    if (!name || !description || !deadline) {
+      return NextResponse.json(
+        { error: "Name, description, and deadline are required" },
+        { status: 400 }
+      );
+    }
+
+
+    const updatedProject = await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        name,
+        description,
+        deadline: new Date(deadline),
+      },
+    });
+
+    const res = NextResponse.json(updatedProject);
+    res.cookies.set("flash_success", "Proyek berhasil diperbarui.", {
+      path: "/",
+      maxAge: 30,
+    });
+    return res;
+  } catch (error) {
+    console.error("Error updating project:", error);
+    return NextResponse.json(
+      { error: "Failed to update project" },
+      { status: 500 }
+    );
   }
 }
 

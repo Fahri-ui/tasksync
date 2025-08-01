@@ -1,12 +1,11 @@
-// app/user/proyek-saya/[id]/page.tsx
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { UserHeader } from "@/components/user/header";
 import Link from "next/link";
-import { ArrowLeft, Calendar, CheckCircle2, Folder, Info, ListTodo, User, Trash2, Pencil } from "lucide-react";
+import { ArrowLeft, Calendar, Folder, Info, ListTodo, User, Trash2, Pencil } from "lucide-react";
 
 interface Task {
   id: string;
@@ -15,6 +14,7 @@ interface Task {
   deadline: string;
   status: "BELUM_SELESAI" | "SELESAI";
   assignedUser: {
+    id: string;
     name: string;
   };
 }
@@ -30,100 +30,193 @@ interface Project {
   tasks: Task[];
 }
 
-export default function ProjectDetailPage({ params }: { params: { id: string } }) {
+interface Friend {
+  id: string;
+  name: string;
+}
+
+export default function ProjectDetailPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { id } = params;
+  const params = useParams();
+  const id = params.id as string;
+
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [friends, setFriends] = useState<Friend[]>([]);
+
+  // Edit Mode
+  const [isEditingProject, setIsEditingProject] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    description: "",
+    deadline: "",
+  });
+
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [taskForm, setTaskForm] = useState({
+    title: "",
+    description: "",
+    deadline: "",
+    assignedTo: "", // userId
+  });
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login");
-    } else if (status === "authenticated" && id) {
+   if (status === "authenticated" && id) {
       fetchProject();
+      fetchFriends();
     }
   }, [status, id, router]);
 
   const fetchProject = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/user/proyek/${id}`);
+      const res = await fetch(`/api/users/proyek/${id}`);
       if (!res.ok) throw new Error("Gagal memuat proyek");
       const data = await res.json();
       setProject(data);
-    } catch (err) {
+    } catch (err: any) {
       setError("Proyek tidak ditemukan atau Anda tidak memiliki akses.");
-      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteProject = async () => {
-    if (!confirm("Yakin ingin menghapus proyek ini? Semua tugas akan ikut terhapus.")) return;
+  const fetchFriends = async () => {
+    try {
+      const res = await fetch("/api/users/friends");
+      if (!res.ok) throw new Error("Gagal muat daftar teman");
+      const data = await res.json();
+      setFriends(data);
+    } catch (err) {
+      console.error("Gagal muat teman:", err);
+    }
+  };
+
+  const startEditProject = () => {
+    if (!project) return;
+    setEditForm({
+      name: project.name,
+      description: project.description || "",
+      deadline: project.deadline ? project.deadline.split("T")[0] : "", // ✅ Aman dari undefined
+    });
+    setIsEditingProject(true);
+  };
+
+  const cancelEditProject = () => {
+    setIsEditingProject(false);
+  };
+
+  const saveEditProject = async () => {
+    // ✅ Validasi input
+    if (!editForm.name || !editForm.description || !editForm.deadline) {
+      alert("Semua field wajib diisi.");
+      return;
+    }
 
     try {
-      const res = await fetch(`/api/user/proyek/${id}`, {
-        method: "DELETE",
+      const res = await fetch(`/api/users/proyek/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm),
       });
 
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.error || "Gagal menyimpan perubahan");
+      }
+
+      const updated = await res.json();
+      setProject(updated);
+      setIsEditingProject(false);
+
+      document.cookie = "flash_success=Proyek berhasil diperbarui.; path=/; max-age=30";
+    } catch (err: any) {
+      console.error("Save error:", err);
+      alert("Gagal menyimpan perubahan: " + err.message);
+    }
+  };
+
+  const deleteProject = async () => {
+    if (!confirm("Yakin ingin menghapus proyek ini?")) return;
+
+    try {
+      const res = await fetch(`/api/users/proyek/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Gagal menghapus proyek");
 
-      // Set flash message via cookie
       document.cookie = "flash_success=Proyek berhasil dihapus.; path=/; max-age=30";
-
       router.push("/user/proyek-saya");
     } catch (err) {
       alert("Gagal menghapus proyek.");
     }
   };
 
-  const handleUpdateTaskStatus = async (taskId: string, currentStatus: string) => {
-    const newStatus = currentStatus === "BELUM_SELESAI" ? "SELESAI" : "BELUM_SELESAI";
+  const startEditTask = (task: Task) => {
+    setEditingTaskId(task.id);
+    setTaskForm({
+      title: task.title,
+      description: task.description || "",
+      deadline: task.deadline.split("T")[0],
+      assignedTo: task.assignedUser.id, // ✅ Simpan ID, bukan nama
+    });
+  };
+
+  const cancelEditTask = () => {
+    setEditingTaskId(null);
+  };
+
+  const saveEditTask = async (taskId: string) => {
+    if (!taskForm.title || !taskForm.deadline || !taskForm.assignedTo) {
+      alert("Semua field tugas wajib diisi.");
+      return;
+    }
 
     try {
-      const res = await fetch(`/api/user/tugas-saya/${taskId}`, {
+      const res = await fetch(`/api/users/tugas/${taskId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({
+          title: taskForm.title,
+          description: taskForm.description,
+          deadline: taskForm.deadline,
+          assignedTo: taskForm.assignedTo, // ✅ Kirim userId
+        }),
       });
 
-      if (!res.ok) throw new Error("Gagal memperbarui status tugas");
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.error || "Gagal menyimpan tugas");
+      }
 
-      // Update UI langsung
+      const updatedTask = await res.json();
       setProject((prev) =>
         prev
           ? {
               ...prev,
-              tasks: prev.tasks.map((task) =>
-                task.id === taskId ? { ...task, status: newStatus } : task
-              ),
+              tasks: prev.tasks.map((t) => (t.id === taskId ? updatedTask : t)),
             }
           : null
       );
-    } catch (err) {
-      alert("Gagal memperbarui status tugas.");
+      setEditingTaskId(null);
+    } catch (err: any) {
+      console.error("Save task error:", err);
+      alert("Gagal menyimpan perubahan tugas: " + err.message);
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
+  const deleteTask = async (taskId: string) => {
     if (!confirm("Yakin ingin menghapus tugas ini?")) return;
 
     try {
-      const res = await fetch(`/api/user/tugas-saya/${taskId}`, {
-        method: "DELETE",
-      });
-
+      const res = await fetch(`/api/users/tugas/${taskId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Gagal menghapus tugas");
 
-      // Update UI
       setProject((prev) =>
         prev
           ? {
               ...prev,
-              tasks: prev.tasks.filter((task) => task.id !== taskId),
+              tasks: prev.tasks.filter((t) => t.id !== taskId),
             }
           : null
       );
@@ -134,14 +227,10 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "aktif":
-        return "bg-green-100 text-green-800";
-      case "selesai":
-        return "bg-blue-100 text-blue-800";
-      case "tertunda":
-        return "bg-yellow-100 text-yellow-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+      case "aktif": return "bg-green-100 text-green-800";
+      case "selesai": return "bg-blue-100 text-blue-800";
+      case "tertunda": return "bg-yellow-100 text-yellow-800";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -187,12 +276,10 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     );
   }
 
-  // Hitung progress
-  const totalTasks = project.tasks.length;
+  const totalTasks = project.tasks?.length || 0;
   const completedTasks = project.tasks.filter((t) => t.status === "SELESAI").length;
   const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
-  // Status proyek
   let projectStatus: "aktif" | "selesai" | "tertunda" = "aktif";
   if (progress === 100) {
     projectStatus = "selesai";
@@ -221,63 +308,106 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-2xl font-bold text-gray-900 flex items-center">
                 <Folder className="w-7 h-7 mr-3 text-blue-600" />
-                {project.name}
+                {isEditingProject ? (
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    className="px-2 py-1 border border-gray-300 rounded"
+                  />
+                ) : (
+                  project.name
+                )}
               </h3>
-              <span
-                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(
-                  projectStatus
-                )}`}
-              >
-                {projectStatus === "aktif" && "🟢 Aktif"}
-                {projectStatus === "selesai" && "✅ Selesai"}
-                {projectStatus === "tertunda" && "⏸️ Tertunda"}
-              </span>
-            </div>
-            <p className="text-gray-700 mb-6">{project.description}</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div className="flex items-center text-gray-600">
-                <Calendar className="w-5 h-5 mr-2 text-gray-500" />
-                <span className="font-medium">Deadline:</span>{" "}
-                {new Date(project.deadline).toLocaleDateString("id-ID", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
+              <div className="flex space-x-2">
+                {isEditingProject ? (
+                  <>
+                    <button
+                      onClick={saveEditProject}
+                      className="px-3 py-1 bg-blue-600 text-white rounded text-sm"
+                    >
+                      Simpan
+                    </button>
+                    <button
+                      onClick={cancelEditProject}
+                      className="px-3 py-1 bg-gray-500 text-white rounded text-sm"
+                    >
+                      Batal
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={startEditProject}
+                      className="px-3 py-1 bg-blue-600 text-white rounded text-sm flex items-center"
+                    >
+                      <Pencil className="w-4 h-4 mr-1" />
+                      Edit
+                    </button>
+                    <button
+                      onClick={deleteProject}
+                      className="px-3 py-1 bg-red-600 text-white rounded text-sm flex items-center"
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Hapus
+                    </button>
+                  </>
+                )}
               </div>
-              <div className="flex items-center text-gray-600">
-                <User className="w-5 h-5 mr-2 text-gray-500" />
-                <span className="font-medium">Manajer:</span> {project.creator.name}
-              </div>
             </div>
+
+            {isEditingProject ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Deskripsi</label>
+                  <textarea
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Deadline</label>
+                  <input
+                    type="date"
+                    value={editForm.deadline}
+                    onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded"
+                  />
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="text-gray-700 mb-6">{project.description}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div className="flex items-center text-gray-600">
+                    <Calendar className="w-5 h-5 mr-2 text-gray-500" />
+                    <span className="font-medium">Deadline:</span>{" "}
+                    {new Date(project.deadline).toLocaleDateString("id-ID", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </div>
+                  <div className="flex items-center text-gray-600">
+                    <User className="w-5 h-5 mr-2 text-gray-500" />
+                    <span className="font-medium">Manajer:</span> {project.creator.name}
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Progress Bar */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">Progress Proyek</label>
               <div className="w-full bg-gray-200 rounded-full h-3">
                 <div
-                  className="bg-blue-600 h-3 rounded-full transition-all duration-500 ease-out"
+                  className="bg-blue-600 h-3 rounded-full"
                   style={{ width: `${progress}%` }}
                 ></div>
               </div>
               <p className="text-right text-sm text-gray-600 mt-1">{progress}% Selesai</p>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex space-x-3">
-              <Link
-                href={`/user/proyek-saya/edit/${id}`}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center"
-              >
-                <Pencil className="w-4 h-4 mr-2" />
-                Edit Proyek
-              </Link>
-              <button
-                onClick={handleDeleteProject}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium flex items-center"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Hapus Proyek
-              </button>
             </div>
           </div>
 
@@ -300,66 +430,91 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-start space-x-4 flex-1">
-                        {/* Checkbox */}
-                        <div
-                          className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors cursor-pointer ${
-                            task.status === "SELESAI"
-                              ? "bg-green-500 border-green-500 text-white"
-                              : "border-gray-300"
-                          }`}
-                          onClick={() => handleUpdateTaskStatus(task.id, task.status)}
-                        >
-                          {task.status === "SELESAI" && <CheckCircle2 className="w-3 h-3" />}
-                        </div>
-                        {/* Task Info */}
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <h5
-                              className={`font-semibold ${
-                                task.status === "SELESAI" ? "text-gray-500 line-through" : "text-gray-900"
-                              }`}
+
+                        {editingTaskId === task.id ? (
+                          <div className="flex-1 space-y-3">
+                            <input
+                              type="text"
+                              value={taskForm.title}
+                              onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded"
+                            />
+                            <textarea
+                              value={taskForm.description}
+                              onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
+                              rows={2}
+                              className="w-full px-3 py-2 border border-gray-300 rounded"
+                            />
+                            <input
+                              type="date"
+                              value={taskForm.deadline}
+                              onChange={(e) => setTaskForm({ ...taskForm, deadline: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded"
+                            />
+                            <select
+                              value={taskForm.assignedTo}
+                              onChange={(e) => setTaskForm({ ...taskForm, assignedTo: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded"
                             >
-                              {task.title}
-                            </h5>
+                              <option value="">Pilih Penanggung Jawab</option>
+                              {friends.map((friend) => (
+                                <option key={friend.id} value={friend.id}>
+                                  {friend.name}
+                                </option>
+                              ))}
+                            </select>
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => saveEditTask(task.id)}
+                                className="px-3 py-1 bg-blue-600 text-white rounded text-sm"
+                              >
+                                Simpan
+                              </button>
+                              <button
+                                onClick={cancelEditTask}
+                                className="px-3 py-1 bg-gray-500 text-white rounded text-sm"
+                              >
+                                Batal
+                              </button>
+                            </div>
                           </div>
-                          <p className="text-sm text-gray-600 mb-2">{task.description}</p>
-                          <div className="flex items-center space-x-4 text-sm text-gray-500">
-                            <span className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-1" />
-                              {new Date(task.deadline).toLocaleDateString("id-ID", {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                              })}
-                            </span>
-                            <span
-                              className={`flex items-center ${
-                                getDaysUntilDeadline(task.deadline) === "Terlambat"
-                                  ? "text-red-600 font-medium"
-                                  : getDaysUntilDeadline(task.deadline).includes("hari ini") ||
-                                    getDaysUntilDeadline(task.deadline).includes("Besok")
-                                  ? "text-orange-600 font-medium"
-                                  : "text-gray-500"
-                              }`}
-                            >
-                              <Info className="w-4 h-4 mr-1" />
-                              {getDaysUntilDeadline(task.deadline)}
-                            </span>
-                            <span className="flex items-center">
-                              <User className="w-4 h-4 mr-1" />
-                              {task.assignedUser.name}
-                            </span>
+                        ) : (
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              <h5 className="font-semibold text-gray-900">{task.title}</h5>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                            <div className="flex items-center space-x-4 text-sm text-gray-500">
+                              <span className="flex items-center">
+                                <Calendar className="w-4 h-4 mr-1" />
+                                {new Date(task.deadline).toLocaleDateString("id-ID", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })}
+                              </span>
+                              <span className="flex items-center">
+                                <User className="w-4 h-4 mr-1" />
+                                {task.assignedUser.name}
+                              </span>
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
-                      {/* Delete Task */}
-                      <div className="ml-4 flex flex-col space-y-2">
+
+                      {/* Action */}
+                      <div className="ml-4">
                         <button
-                          onClick={() => handleDeleteTask(task.id)}
-                          className="text-red-500 hover:text-red-700 transition-colors"
-                          aria-label="Hapus tugas"
+                          onClick={() => startEditTask(task)}
+                          className="text-blue-600 hover:text-blue-800 text-sm mr-2"
                         >
-                          <Trash2 className="w-5 h-5" />
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => deleteTask(task.id)}
+                          className="text-red-600 hover:text-red-800 text-sm"
+                        >
+                          Hapus
                         </button>
                       </div>
                     </div>
