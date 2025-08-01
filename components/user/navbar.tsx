@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react"
 import { useRouter, usePathname } from "next/navigation"
 import { useState } from "react"
 import Link from "next/link"
-import { Users, Home, LogOut, FolderPlus } from "lucide-react" // Import FolderPlus icon
+import { Users, Home, LogOut, FolderPlus } from "lucide-react" 
 
 export function UserNavbar() {
   const { data: session } = useSession()
@@ -48,7 +48,7 @@ export function UserNavbar() {
       ),
     },
     {
-      id: "buat-proyek", // New menu item for creating project
+      id: "buat-proyek", 
       name: "Buat Proyek",
       href: "/user/buat-proyek",
       icon: <FolderPlus className="w-5 h-5" />,
@@ -93,12 +93,10 @@ export function UserNavbar() {
 
   return (
     <>
-      {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 sticky top-0`}
       >
-        <div className="flex flex-col h-full">
-          {/* Logo Section */}
+        <div className="flex flex-col h-screen lg:sticky lg:top-0">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <div className="flex items-center space-x-3">
               <div className="relative">
@@ -121,7 +119,6 @@ export function UserNavbar() {
               </div>
             </div>
 
-            {/* Mobile close button */}
             <button
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -132,7 +129,6 @@ export function UserNavbar() {
             </button>
           </div>
 
-          {/* User Info */}
           <div className="px-6 py-4 border-b border-gray-100">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-400 rounded-full flex items-center justify-center text-white font-semibold text-sm">
@@ -145,7 +141,6 @@ export function UserNavbar() {
             </div>
           </div>
 
-          {/* Navigation Menu */}
           <nav className="flex-1 px-6 py-4">
             <ul className="space-y-2">
               {menuItems.map((item) => {
@@ -170,7 +165,6 @@ export function UserNavbar() {
             </ul>
           </nav>
 
-          {/* Logout Button */}
           <div className="px-6 py-4 border-t border-gray-100">
             <button
               onClick={handleLogout}
@@ -183,7 +177,6 @@ export function UserNavbar() {
         </div>
       </div>
 
-      {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
@@ -191,7 +184,6 @@ export function UserNavbar() {
         ></div>
       )}
 
-      {/* Mobile menu button - positioned fixed for mobile */}
       <button
         onClick={() => setSidebarOpen(true)}
         className="lg:hidden fixed top-4 left-4 z-30 p-2 rounded-lg bg-white shadow-md hover:bg-gray-100 transition-colors"

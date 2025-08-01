@@ -116,7 +116,7 @@ export function CreateProjectForm() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full px-3 py-2 border border-gray-300 text-black rounded-md"
               required
             />
           </div>
@@ -126,7 +126,7 @@ export function CreateProjectForm() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full px-3 py-2 border text-black border-gray-300 rounded-md"
               required
             />
           </div>
@@ -136,7 +136,7 @@ export function CreateProjectForm() {
               type="date"
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="text-black w-full px-3 py-2 border border-gray-300 rounded-md"
               required
             />
           </div>

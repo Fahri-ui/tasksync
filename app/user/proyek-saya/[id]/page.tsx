@@ -128,7 +128,7 @@ export default function ProjectDetailPage() {
 
       const newTaskData = await res.json();
 
-      // Update state tanpa reload
+      
       setProject((prev) =>
         prev
           ? {
@@ -138,7 +138,7 @@ export default function ProjectDetailPage() {
           : null
       );
 
-      // Reset form
+      
       setNewTask({ title: "", description: "", deadline: "", assignedTo: "" });
       setShowAddTaskForm(false);
     } catch (err: any) {
@@ -153,7 +153,7 @@ export default function ProjectDetailPage() {
     setEditForm({
       name: project.name,
       description: project.description || "",
-      deadline: project.deadline ? project.deadline.split("T")[0] : "", // ✅ Aman dari undefined
+      deadline: project.deadline ? project.deadline.split("T")[0] : "", 
     });
     setIsEditingProject(true);
   };
@@ -163,7 +163,7 @@ export default function ProjectDetailPage() {
   };
 
   const saveEditProject = async () => {
-    // ✅ Validasi input
+    
     if (!editForm.name || !editForm.description || !editForm.deadline) {
       alert("Semua field wajib diisi.");
       return;
@@ -212,7 +212,7 @@ export default function ProjectDetailPage() {
       title: task.title,
       description: task.description || "",
       deadline: task.deadline.split("T")[0],
-      assignedTo: task.assignedUser.id, // ✅ Simpan ID, bukan nama
+      assignedTo: task.assignedUser.id, 
     });
   };
 
@@ -234,7 +234,7 @@ export default function ProjectDetailPage() {
           title: taskForm.title,
           description: taskForm.description,
           deadline: taskForm.deadline,
-          assignedTo: taskForm.assignedTo, // ✅ Kirim userId
+          assignedTo: taskForm.assignedTo, 
         }),
       });
 
@@ -345,7 +345,7 @@ export default function ProjectDetailPage() {
       <UserHeader title={`Detail Proyek: ${project.name}`} />
       <main className="p-4 sm:p-6 lg:p-8">
         <div className="space-y-6">
-          {/* Back Button */}
+          
           <div className="mb-6">
             <Link
               href="/user/proyek-saya"
@@ -356,7 +356,7 @@ export default function ProjectDetailPage() {
             </Link>
           </div>
 
-          {/* Project Details Card */}
+          
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-2xl font-bold text-gray-900 flex items-center">
@@ -366,7 +366,7 @@ export default function ProjectDetailPage() {
                     type="text"
                     value={editForm.name}
                     onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                    className="px-2 py-1 border border-gray-300 rounded"
+                    className="text-black px-2 py-1 border border-gray-300 rounded"
                   />
                 ) : (
                   project.name
@@ -419,7 +419,7 @@ export default function ProjectDetailPage() {
                     value={editForm.description}
                     onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded"
+                    className="text-black w-full px-3 py-2 border border-gray-300 rounded"
                   />
                 </div>
                 <div>
@@ -428,7 +428,7 @@ export default function ProjectDetailPage() {
                     type="date"
                     value={editForm.deadline}
                     onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded"
+                    className="text-black text-black w-full px-3 py-2 border border-gray-300 rounded"
                   />
                 </div>
               </div>
@@ -453,7 +453,7 @@ export default function ProjectDetailPage() {
               </>
             )}
 
-            {/* Progress Bar */}
+            
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">Progress Proyek</label>
               <div className="w-full bg-gray-200 rounded-full h-3">
@@ -466,7 +466,7 @@ export default function ProjectDetailPage() {
             </div>
           </div>
 
-          {/* Project Tasks Section */}
+          
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <h4 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
               <ListTodo className="w-6 h-6 mr-2 text-green-600" />
@@ -492,24 +492,24 @@ export default function ProjectDetailPage() {
                               type="text"
                               value={taskForm.title}
                               onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 rounded"
+                              className="text-black w-full px-3 py-2 border border-gray-300 rounded"
                             />
                             <textarea
                               value={taskForm.description}
                               onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
                               rows={2}
-                              className="w-full px-3 py-2 border border-gray-300 rounded"
+                              className="text-black w-full px-3 py-2 border border-gray-300 rounded"
                             />
                             <input
                               type="date"
                               value={taskForm.deadline}
                               onChange={(e) => setTaskForm({ ...taskForm, deadline: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 rounded"
+                              className="text-black w-full px-3 py-2 border border-gray-300 rounded"
                             />
                             <select
                               value={taskForm.assignedTo}
                               onChange={(e) => setTaskForm({ ...taskForm, assignedTo: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 rounded"
+                              className="text-black w-full px-3 py-2 border border-gray-300 rounded"
                             >
                               <option value="">Pilih Penanggung Jawab</option>
                               {friends.map((friend) => (
@@ -583,7 +583,7 @@ export default function ProjectDetailPage() {
               )}
             </div>
           </div>
-          {/* Add Task Form - Only for Creator */}
+          
           {project?.isCreator && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mt-6">
               <div className="flex justify-between items-center mb-4">
@@ -612,7 +612,7 @@ export default function ProjectDetailPage() {
                       type="text"
                       value={newTask.title}
                       onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="text-black w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       required
                     />
                   </div>
@@ -625,7 +625,7 @@ export default function ProjectDetailPage() {
                       value={newTask.description}
                       onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
                       rows={2}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="text-black w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
 
@@ -638,7 +638,7 @@ export default function ProjectDetailPage() {
                         type="date"
                         value={newTask.deadline}
                         onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        className="text-black w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                         required
                       />
                     </div>
@@ -650,7 +650,7 @@ export default function ProjectDetailPage() {
                       <select
                         value={newTask.assignedTo}
                         onChange={(e) => setNewTask({ ...newTask, assignedTo: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        className="text-black w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                         required
                       >
                         <option value="">Pilih Teman</option>

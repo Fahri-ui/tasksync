@@ -39,7 +39,7 @@ export function TaskInputCard({ task, onUpdate, onDelete, friends }: TaskInputCa
           value={task.title}
           onChange={(e) => onUpdate(task.tempId, "title", e.target.value)}
           placeholder="Contoh: Desain UI Dashboard"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+          className="text-black w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
           required
         />
       </div>
@@ -53,7 +53,7 @@ export function TaskInputCard({ task, onUpdate, onDelete, friends }: TaskInputCa
           onChange={(e) => onUpdate(task.tempId, "description", e.target.value)}
           placeholder="Detail tugas yang perlu dikerjakan"
           rows={2}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+          className="text-black w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -66,7 +66,7 @@ export function TaskInputCard({ task, onUpdate, onDelete, friends }: TaskInputCa
             type="date"
             value={task.deadline}
             onChange={(e) => onUpdate(task.tempId, "deadline", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            className="text-black w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             required
           />
         </div>
@@ -78,7 +78,7 @@ export function TaskInputCard({ task, onUpdate, onDelete, friends }: TaskInputCa
             id={`task-assignee-${task.tempId}`}
             value={task.assignedTo}
             onChange={(e) => onUpdate(task.tempId, "assignedTo", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            className="text-black w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             required
           >
             <option value="">Pilih Teman</option>
