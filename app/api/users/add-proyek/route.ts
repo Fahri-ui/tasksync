@@ -1,19 +1,19 @@
-// app/api/proyek/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
-// Tipe request body
+
 interface CreateProjectRequestBody {
   name: string;
   description: string;
-  deadline: string; // ISO string
+  deadline: string; 
   tasks: {
     title: string;
     description: string;
-    deadline: string; // ISO string
-    assignedTo: string; // userId
+    deadline: string; 
+    assignedTo: string; 
   }[];
 }
 
@@ -29,17 +29,17 @@ export async function POST(request: NextRequest) {
 
     const { name, description, deadline, tasks } = body;
 
-    // Validasi dasar
+    
     if (!name || !description || !deadline) {
       return NextResponse.json({ error: "Nama, deskripsi, dan deadline wajib diisi" }, { status: 400 });
     }
 
-    // Validasi tugas
+    
     if (!Array.isArray(tasks) || tasks.length === 0) {
       return NextResponse.json({ error: "Minimal satu tugas harus ditambahkan" }, { status: 400 });
     }
 
-    // Ambil userId dari assignee dan pastikan mereka ada
+    
     const assigneeIds = tasks.map(t => t.assignedTo);
     const uniqueAssigneeIds = [...new Set(assigneeIds)];
 
@@ -54,9 +54,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Salah satu penanggung jawab tidak ditemukan" }, { status: 400 });
     }
 
-    // Buat proyek dan relasi
+    
     const project = await prisma.$transaction(async (prisma) => {
-      // 1. Buat proyek
+      
       const newProject = await prisma.project.create({
         data: {
           name,
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // 2. Tambahkan creator sebagai MANAGER
+      
       await prisma.projectMember.create({
         data: {
           projectId: newProject.id,
@@ -76,9 +76,9 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // 3. Tambahkan anggota dan tugas
+      
       for (const task of tasks) {
-        // Pastikan anggota sudah jadi anggota proyek
+        
         const existingMember = await prisma.projectMember.findUnique({
           where: {
             projectId_userId: {
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        // Buat tugas
+        
         await prisma.task.create({
           data: {
             title: task.title,
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
       return newProject;
     });
 
-    // Menjadi:
+    
     const res = NextResponse.json(
       { success: true, projectId: project.id },
       { status: 200 }
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
 
     res.cookies.set("flash_success", "Proyek berhasil dibuat.", {
       path: "/",
-      maxAge: 30, // 30 detik
+      maxAge: 30, 
     });
 
     return res;

@@ -119,10 +119,11 @@ export default function ResetPasswordPage() {
       setTimeout(() => {
         router.push("/login")
       }, 2000)
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Terjadi kesalahan, silakan coba lagi";
       setAlert({
         type: "error",
-        message: error.message || "Terjadi kesalahan, silakan coba lagi",
+        message,
         isShow: true,
       })
     } finally {

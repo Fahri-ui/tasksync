@@ -128,7 +128,7 @@ export default function PertemananPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {loading ? (
-              // 🟨 Loading State: Skeleton Cards
+              
               Array.from({ length: 8 }).map((_, index) => (
                 <div
                   key={`skeleton-${index}`}
@@ -143,7 +143,7 @@ export default function PertemananPage() {
                 </div>
               ))
             ) : users.length > 0 ? (
-              // ✅ Data tersedia
+              
               users.map((user) => (
                 <div
                   key={user.id}
@@ -177,7 +177,7 @@ export default function PertemananPage() {
                 </div>
               ))
             ) : (
-              // 🟡 Data kosong
+              
               <div className="col-span-full text-center py-12">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Users className="w-8 h-8 text-gray-400" />

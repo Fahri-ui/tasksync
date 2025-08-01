@@ -60,10 +60,11 @@ export default function ForgotPasswordPage() {
 
       // Redirect ke halaman reset password
       router.push("/reset-password")
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Terjadi kesalahan, silakan coba lagi";
       setAlert({
         type: "error",
-        message: error.message || "Terjadi kesalahan, silakan coba lagi",
+        message,
         isShow: true,
       })
     } finally {

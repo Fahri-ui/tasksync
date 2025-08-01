@@ -5,6 +5,11 @@ import { PrismaClient, Role, Gender } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// Tipe untuk error Zod
+interface ZodIssue {
+  message: string;
+}
+
 export async function POST(req: Request) {
   try {
     const data = await req.json();
@@ -38,7 +43,6 @@ export async function POST(req: Request) {
         { error: "Email sudah terdaftar, gunakan email lain!" },
         { status: 400 }
       );
-
       return res;
     }
 
@@ -68,19 +72,22 @@ export async function POST(req: Request) {
       maxAge: 30,
     });
     return res;
-
-  } catch (error: any) {
+  } catch (error) {
     console.error("Register Error:", error);
 
     // ✅ Tangani error validasi Zod
-    if (error.name === "ZodError") {
-      const messages = error.issues.map((issue: any) => issue.message);
+    if (error instanceof z.ZodError) {
+      const messages = error.issues.map((issue) => issue.message);
       const errorMessage = messages.join(", ");
       const res = NextResponse.json({ error: errorMessage }, { status: 400 });
       return res;
     }
 
-    const errorMessage = error.message || "Terjadi kesalahan saat registrasi";
+    // ✅ Tangani error dari Prisma atau runtime
+    let errorMessage = "Terjadi kesalahan saat registrasi";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
 
     const res = NextResponse.json({ error: errorMessage }, { status: 500 });
 
