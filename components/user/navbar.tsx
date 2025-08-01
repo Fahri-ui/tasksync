@@ -34,7 +34,7 @@ export function UserNavbar() {
     },
     {
       id: "proyek-saya",
-      name: "Proyek Saya",
+      name: "Proyek",
       href: "/user/proyek-saya",
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -49,13 +49,13 @@ export function UserNavbar() {
     },
     {
       id: "buat-proyek", // New menu item for creating project
-      name: "Buat Proyek Baru",
+      name: "Buat Proyek",
       href: "/user/buat-proyek",
       icon: <FolderPlus className="w-5 h-5" />,
     },
     {
       id: "tugas-saya",
-      name: "Tugas Saya",
+      name: "Tugas",
       href: "/user/tugas-saya",
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

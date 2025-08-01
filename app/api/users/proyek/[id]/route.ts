@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // ✅ Perbaiki path
+import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
 export async function GET(
@@ -38,13 +38,15 @@ export async function GET(
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    return NextResponse.json(project);
+    return NextResponse.json({
+      ...project,
+      isCreator: project.creatorId === userId,
+    });
   } catch (error) {
     console.error("Error fetching project:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
-
 
 // Tambahkan PATCH
 export async function PATCH(
@@ -101,7 +103,7 @@ export async function PATCH(
     });
 
     const res = NextResponse.json(updatedProject);
-    res.cookies.set("flash_success", "Proyek berhasil diperbarui.", {
+    res.cookies.set("flash", "Proyek berhasil diperbarui.", {
       path: "/",
       maxAge: 30,
     });

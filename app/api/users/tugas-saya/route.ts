@@ -1,107 +1,137 @@
-import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import prisma from "@/lib/prisma"
+// app/api/user/tugas-saya/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth"; 
+import prisma from "@/lib/prisma";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session || !session.user?.id) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = session.user.id
-    const { searchParams } = new URL(request.url)
-    const searchTerm = searchParams.get("search") || ""
+    const userId = session.user.id;
 
-    // Fetch all project memberships for the current user
-    const projectMemberships = await prisma.projectMember.findMany({
+    // Ambil semua tugas yang diassign ke user
+    const tasks = await prisma.task.findMany({
       where: {
-        userId: userId,
-        project: {
-          OR: [
-            {
-              name: {
-                contains: searchTerm,
-                mode: "insensitive",
-              },
-            },
-            {
-              creator: {
-                name: {
-                  contains: searchTerm,
-                  mode: "insensitive",
-                },
-              },
-            },
-          ],
-        },
+        assignedTo: userId,
       },
       include: {
         project: {
-          include: {
-            creator: {
-              select: {
-                name: true,
-              },
-            },
-            tasks: {
-              select: {
-                id: true,
-                status: true,
-              },
-            },
+          select: {
+            name: true,
+            id: true,
           },
         },
       },
       orderBy: {
-        project: {
-          createdAt: "desc", // Order by project creation date
+        deadline: "asc",
+      },
+    });
+
+    // Format untuk frontend
+    const formattedTasks = tasks.map((task) => ({
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      deadline: task.deadline.toISOString(),
+      status: task.status,
+      project: {
+        name: task.project.name,
+        id: task.project.id,
+      },
+    }));
+
+    return NextResponse.json(formattedTasks);
+  } catch (error) {
+    console.error("Error fetching user tasks:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch tasks" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userId = session.user.id;
+    const { title, description, deadline, projectId, assignedTo } = await request.json();
+
+    // Validasi input
+    if (!title || !deadline || !projectId || !assignedTo) {
+      return NextResponse.json(
+        { error: "Semua field wajib diisi" },
+        { status: 400 }
+      );
+    }
+
+    // Cek apakah user adalah creator proyek
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { creatorId: true },
+    });
+
+    if (!project) {
+      return NextResponse.json({ error: "Proyek tidak ditemukan" }, { status: 404 });
+    }
+
+    if (project.creatorId !== userId) {
+      return NextResponse.json({ error: "Hanya creator yang bisa menambah tugas" }, { status: 403 });
+    }
+
+    // Cek apakah assignedTo adalah anggota proyek
+    const isMember = await prisma.projectMember.findUnique({
+      where: {
+        projectId_userId: {
+          projectId,
+          userId: assignedTo,
         },
       },
-    })
+    });
 
-    const projectsData = projectMemberships.map((pm) => {
-      const totalProjectTasks = pm.project.tasks.length
-      const completedProjectTasks = pm.project.tasks.filter((task) => task.status === "SELESAI").length
-      const progress = totalProjectTasks > 0 ? Math.round((completedProjectTasks / totalProjectTasks) * 100) : 0
+    if (!isMember) {
+      return NextResponse.json(
+        { error: "Penanggung jawab harus menjadi anggota proyek" },
+        { status: 400 }
+      );
+    }
 
-      // Since Project model doesn't have a 'status' field, we derive it from progress
-      let derivedStatus: "aktif" | "selesai" | "tertunda" = "aktif" // Default to aktif
-      if (progress === 100) {
-        derivedStatus = "selesai"
-      }
-      // 'tertunda' is hard to derive purely from tasks without a specific project status field.
-      // For now, we'll only distinguish between 'aktif' and 'selesai'.
-      // If you need 'tertunda', consider adding a 'status' field to your Project model.
-
-      return {
-        id: pm.project.id,
-        name: pm.project.name,
-        description: pm.project.description,
-        deadline: pm.project.deadline,
-        manager: pm.project.creator.name,
-        progress: progress,
-        status: derivedStatus, // Derived status
-      }
-    })
-
-    // Calculate summary stats
-    const totalProjectsCount = projectsData.length
-    const activeProjectsCount = projectsData.filter((p) => p.status === "aktif").length
-    const completedProjectsCount = projectsData.filter((p) => p.status === "selesai").length
-
-    return NextResponse.json({
-      projects: projectsData,
-      summary: {
-        total: totalProjectsCount,
-        active: activeProjectsCount,
-        completed: completedProjectsCount,
+    // Buat tugas baru
+    const newTask = await prisma.task.create({
+      data: {
+        title,
+        description,
+        deadline: new Date(deadline),
+        projectId,
+        assignedTo,
       },
-    })
+    });
+
+    // Ambil nama assignee untuk response
+    const assignedUser = await prisma.user.findUnique({
+      where: { id: assignedTo },
+      select: { name: true },
+    });
+
+    // Response dengan data lengkap
+    const responseData = {
+      ...newTask,
+      assignedUser: { name: assignedUser?.name || "Unknown" },
+    };
+
+    return NextResponse.json(responseData);
   } catch (error) {
-    console.error("Error fetching projects data:", error)
-    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 })
+    console.error("Error creating task:", error);
+    return NextResponse.json(
+      { error: "Gagal membuat tugas" },
+      { status: 500 }
+    );
   }
 }

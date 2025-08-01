@@ -22,12 +22,6 @@ export default function PertemananPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login");
-    }
-  }, [status, router]);
-
-  useEffect(() => {
     const fetchUsers = async () => {
       setLoading(true);
       setError(null);
@@ -101,7 +95,6 @@ export default function PertemananPage() {
       <UserHeader title="Pertemanan" />
       <main className="p-4 sm:p-6 lg:p-8">
         <div className="space-y-6">
-          {/* Header Section */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
@@ -133,9 +126,24 @@ export default function PertemananPage() {
             </div>
           </div>
 
-          {/* User List */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {users.length > 0 ? (
+            {loading ? (
+              // 🟨 Loading State: Skeleton Cards
+              Array.from({ length: 8 }).map((_, index) => (
+                <div
+                  key={`skeleton-${index}`}
+                  className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col items-center text-center animate-pulse">
+                  <div className="w-20 h-20 bg-gray-200 rounded-full mb-4"></div>
+
+                  <div className="h-5 bg-gray-200 rounded w-24 mb-2"></div>
+
+                  <div className="h-4 bg-gray-200 rounded w-32 mb-4"></div>
+
+                  <div className="h-9 bg-gray-200 rounded-lg w-36"></div>
+                </div>
+              ))
+            ) : users.length > 0 ? (
+              // ✅ Data tersedia
               users.map((user) => (
                 <div
                   key={user.id}
@@ -169,6 +177,7 @@ export default function PertemananPage() {
                 </div>
               ))
             ) : (
+              // 🟡 Data kosong
               <div className="col-span-full text-center py-12">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Users className="w-8 h-8 text-gray-400" />

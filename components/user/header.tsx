@@ -19,7 +19,7 @@ export function UserHeader({ title }: HeaderProps) {
 
         {/* User Avatar */}
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-400 rounded-full flex items-center justify-center text-white font-semibold text-sm">
             {user?.name?.charAt(0).toUpperCase()}
           </div>
         </div>

@@ -28,6 +28,7 @@ interface Project {
     name: string;
   };
   tasks: Task[];
+  isCreator: boolean;
 }
 
 interface Friend {
@@ -40,13 +41,11 @@ export default function ProjectDetailPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
-
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [friends, setFriends] = useState<Friend[]>([]);
 
-  // Edit Mode
   const [isEditingProject, setIsEditingProject] = useState(false);
   const [editForm, setEditForm] = useState({
     name: "",
@@ -59,15 +58,29 @@ export default function ProjectDetailPage() {
     title: "",
     description: "",
     deadline: "",
-    assignedTo: "", // userId
+    assignedTo: "",
   });
 
+  const [showAddTaskForm, setShowAddTaskForm] = useState(false);
+  const [newTask, setNewTask] = useState({
+    title: "",
+    description: "",
+    deadline: "",
+    assignedTo: "",
+  });
+  const [taskLoading, setTaskLoading] = useState(false);
+  const [taskError, setTaskError] = useState<string | null>(null);
+
+
   useEffect(() => {
-   if (status === "authenticated" && id) {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    } else if (status === "authenticated" && id) {
       fetchProject();
       fetchFriends();
     }
   }, [status, id, router]);
+
 
   const fetchProject = async () => {
     setLoading(true);
@@ -91,6 +104,47 @@ export default function ProjectDetailPage() {
       setFriends(data);
     } catch (err) {
       console.error("Gagal muat teman:", err);
+    }
+  };
+
+  const handleAddTask = async () => {
+    setTaskLoading(true);
+    setTaskError(null);
+
+    try {
+      const res = await fetch("/api/users/tugas-saya", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...newTask,
+          projectId: id,
+        }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.error || "Gagal membuat tugas");
+      }
+
+      const newTaskData = await res.json();
+
+      // Update state tanpa reload
+      setProject((prev) =>
+        prev
+          ? {
+              ...prev,
+              tasks: [newTaskData, ...prev.tasks],
+            }
+          : null
+      );
+
+      // Reset form
+      setNewTask({ title: "", description: "", deadline: "", assignedTo: "" });
+      setShowAddTaskForm(false);
+    } catch (err: any) {
+      setTaskError(err.message);
+    } finally {
+      setTaskLoading(false);
     }
   };
 
@@ -173,9 +227,9 @@ export default function ProjectDetailPage() {
     }
 
     try {
-      const res = await fetch(`/api/users/tugas-saya/${taskId}`, {
+      const res = await fetch(`/api/users/proyek/edit-tugas/${taskId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json"},
         body: JSON.stringify({
           title: taskForm.title,
           description: taskForm.description,
@@ -206,7 +260,6 @@ export default function ProjectDetailPage() {
   };
 
   const deleteTask = async (taskId: string) => {
-    if (!confirm("Yakin ingin menghapus tugas ini?")) return;
 
     try {
       const res = await fetch(`/api/users/tugas-saya/${taskId}`, { method: "DELETE" });
@@ -319,6 +372,7 @@ export default function ProjectDetailPage() {
                   project.name
                 )}
               </h3>
+              {project.isCreator && (
               <div className="flex space-x-2">
                 {isEditingProject ? (
                   <>
@@ -354,6 +408,7 @@ export default function ProjectDetailPage() {
                   </>
                 )}
               </div>
+              )}
             </div>
 
             {isEditingProject ? (
@@ -502,7 +557,7 @@ export default function ProjectDetailPage() {
                         )}
                       </div>
 
-                      {/* Action */}
+                      {project.isCreator && (
                       <div className="ml-4">
                         <button
                           onClick={() => startEditTask(task)}
@@ -517,6 +572,7 @@ export default function ProjectDetailPage() {
                           Hapus
                         </button>
                       </div>
+                      )}
                     </div>
                   </div>
                 ))
@@ -527,6 +583,109 @@ export default function ProjectDetailPage() {
               )}
             </div>
           </div>
+          {/* Add Task Form - Only for Creator */}
+          {project?.isCreator && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mt-6">
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="text-lg font-bold text-gray-900">➕ Tambah Tugas Baru</h4>
+                <button
+                  onClick={() => setShowAddTaskForm(!showAddTaskForm)}
+                  className="text-blue-600 hover:text-blue-700 font-medium text-sm"
+                >
+                  {showAddTaskForm ? "Tutup" : "Tambah Tugas"}
+                </button>
+              </div>
+
+              {showAddTaskForm && (
+                <div className="space-y-4">
+                  {taskError && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                      {taskError}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Judul Tugas
+                    </label>
+                    <input
+                      type="text"
+                      value={newTask.title}
+                      onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Deskripsi
+                    </label>
+                    <textarea
+                      value={newTask.description}
+                      onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                      rows={2}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Deadline
+                      </label>
+                      <input
+                        type="date"
+                        value={newTask.deadline}
+                        onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Penanggung Jawab
+                      </label>
+                      <select
+                        value={newTask.assignedTo}
+                        onChange={(e) => setNewTask({ ...newTask, assignedTo: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      >
+                        <option value="">Pilih Teman</option>
+                        {friends.map((friend) => (
+                          <option key={friend.id} value={friend.id}>
+                            {friend.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex space-x-3 pt-2">
+                    <button
+                      onClick={handleAddTask}
+                      disabled={taskLoading}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex-1"
+                    >
+                      {taskLoading ? "Menyimpan..." : "Simpan Tugas"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAddTaskForm(false);
+                        setNewTask({ title: "", description: "", deadline: "", assignedTo: "" });
+                        setTaskError(null);
+                      }}
+                      className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400"
+                    >
+                      Batal
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </main>
     </>

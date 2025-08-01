@@ -5,7 +5,7 @@ import Link from "next/link"
 import { UserRoundCheck } from "lucide-react"
 import { UserHeader } from "@/components/user/header"
 
-// Define types for the data fetched for the dashboard
+
 interface UserData {
   id: string
   name: string
@@ -78,7 +78,7 @@ export default async function DashboardPage() {
   }
 
   try {
-    // 1. Fetch User Details
+    
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -97,7 +97,7 @@ export default async function DashboardPage() {
       )
     }
 
-    // 2. Fetch Project & Task Statistics
+    
     const totalProjects = await prisma.projectMember.count({
       where: { userId: userId },
     })
@@ -116,7 +116,7 @@ export default async function DashboardPage() {
       },
     })
 
-    // Calculate upcoming tasks (within 3 days from now)
+    
     const today = new Date()
     const threeDaysFromNow = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000)
 
@@ -138,10 +138,10 @@ export default async function DashboardPage() {
       orderBy: {
         deadline: "asc",
       },
-      take: 3, // Limit to 3 for dashboard display
+      take: 3, 
     })
 
-    // 3. Fetch Recent Projects
+    
     const recentProjects = await prisma.projectMember.findMany({
       where: { userId: userId },
       include: {
@@ -162,12 +162,12 @@ export default async function DashboardPage() {
         },
       },
       orderBy: {
-        joinedAt: "desc", // Order by when the user joined the project
+        joinedAt: "desc", 
       },
-      take: 3, // Limit to 3 for dashboard display
+      take: 3, 
     })
 
-    // Map recent projects to include manager name and calculate progress
+    
     const formattedRecentProjects = recentProjects.map((pm) => {
       const totalProjectTasks = pm.project.tasks.length
       const completedProjectTasks = pm.project.tasks.filter((task) => task.status === "SELESAI").length
@@ -181,7 +181,7 @@ export default async function DashboardPage() {
       }
     })
 
-    // 4. Fetch Friends
+    
     const friendships = await prisma.friendship.findMany({
       where: {
         OR: [{ requesterId: userId }, { addresseeId: userId }],
@@ -206,10 +206,10 @@ export default async function DashboardPage() {
 
     const myFriends = friendships
       .map((friendship) => {
-        // Return the user who is NOT the current user
+        
         return friendship.requesterId === userId ? friendship.addressee : friendship.requester
       })
-      .slice(0, 3) // Limit to 3 for dashboard display
+      .slice(0, 3) 
 
     dashboardData = {
       user: {
@@ -341,9 +341,6 @@ export default async function DashboardPage() {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h4 className="text-lg font-semibold text-gray-900">🔔 Deadline Tugas</h4>
-                <Link href="/user/tugas-saya" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                  Lihat Semua
-                </Link>
               </div>
               <div className="space-y-3">
                 {upcomingTasks.length > 0 ? (
@@ -372,10 +369,7 @@ export default async function DashboardPage() {
             </div>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h4 className="text-lg font-semibold text-gray-900">🔗 Proyek Terakhir</h4>
-                <Link href="/user/proyek-saya" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                  Lihat Semua
-                </Link>
+                <h4 className="text-lg font-semibold text-gray-900">🔗 Proyek yang di ikuti</h4>
               </div>
               <div className="space-y-3">
                 {recentProjects.map((project) => (
@@ -404,9 +398,6 @@ export default async function DashboardPage() {
                 <UserRoundCheck className="inline-block mr-2 w-5 h-5 text-purple-600" />
                 Daftar Pertemanan Saya
               </h4>
-              <Link href="/user/pertemanan" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                Lihat Semua
-              </Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {myFriends.length > 0 ? (
