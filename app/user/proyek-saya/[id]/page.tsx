@@ -173,7 +173,7 @@ export default function ProjectDetailPage() {
     }
 
     try {
-      const res = await fetch(`/api/users/tugas/${taskId}`, {
+      const res = await fetch(`/api/users/tugas-saya/${taskId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -209,7 +209,7 @@ export default function ProjectDetailPage() {
     if (!confirm("Yakin ingin menghapus tugas ini?")) return;
 
     try {
-      const res = await fetch(`/api/users/tugas/${taskId}`, { method: "DELETE" });
+      const res = await fetch(`/api/users/tugas-saya/${taskId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Gagal menghapus tugas");
 
       setProject((prev) =>

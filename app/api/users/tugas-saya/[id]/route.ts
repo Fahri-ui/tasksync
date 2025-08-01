@@ -1,10 +1,9 @@
-// app/api/user/tugas/[id]/route.ts
+// app/api/users/tugas/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth"; 
+import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
-// PATCH: Update status tugas
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -15,45 +14,66 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { status: newStatus } = await request.json();
+    const userId = session.user.id;
     const taskId = params.id;
 
+    const body = await request.json();
+    const { title, description, deadline, assignedTo } = body;
+
+    if (!title || !deadline || !assignedTo) {
+      return NextResponse.json(
+        { error: "Title, deadline, and assignedTo are required" },
+        { status: 400 }
+      );
+    }
+
+    // Cek apakah task ada & apakah user adalah creator proyek atau bagian dari proyek
     const task = await prisma.task.findUnique({
       where: { id: taskId },
-      select: { projectId: true },
+      include: {
+        project: {
+          include: {
+            members: true,
+          },
+        },
+      },
     });
 
     if (!task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    // Cek apakah user adalah anggota proyek
-    const member = await prisma.projectMember.findUnique({
-      where: {
-        projectId_userId: {
-          projectId: task.projectId,
-          userId: session.user.id,
-        },
-      },
-    });
+    // Hanya creator proyek atau user yang ditugaskan bisa edit
+    const isCreator = task.project.creatorId === userId;
+    const isMember = task.project.members.some((m) => m.userId === userId);
+    const isAssigned = task.assignedTo === assignedTo;
 
-    if (!member) {
+    // Di sini kita izinkan creator atau anggota proyek mengedit
+    if (!isCreator && !isMember) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    await prisma.task.update({
+    // Update task
+    const updatedTask = await prisma.task.update({
       where: { id: taskId },
-      data: { status: newStatus },
+      data: {
+        title,
+        description,
+        deadline: new Date(deadline),
+        assignedTo,
+      },
+      include: {
+        assignedUser: { select: { id: true, name: true } },
+      },
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json(updatedTask);
   } catch (error) {
     console.error("Error updating task:", error);
     return NextResponse.json({ error: "Failed to update task" }, { status: 500 });
   }
 }
 
-// DELETE: Hapus tugas (hanya manager)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -64,33 +84,23 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const userId = session.user.id;
     const taskId = params.id;
 
     const task = await prisma.task.findUnique({
       where: { id: taskId },
-      include: {
-        project: {
-          include: {
-            members: {
-              where: { userId: session.user.id },
-            },
-          },
-        },
-      },
+      include: { project: true },
     });
 
     if (!task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    const isManager = task.project.members.some((m) => m.role === "MANAGER");
-    if (!isManager) {
+    if (task.project.creatorId !== userId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    await prisma.task.delete({
-      where: { id: taskId },
-    });
+    await prisma.task.delete({ where: { id: taskId } });
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -90,6 +90,14 @@ export async function PATCH(
         description,
         deadline: new Date(deadline),
       },
+      include: {
+        creator: { select: { name: true } },
+        tasks: {
+          include: {
+            assignedUser: { select: { name: true } },
+          },
+        },
+      },
     });
 
     const res = NextResponse.json(updatedProject);
