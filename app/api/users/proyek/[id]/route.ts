@@ -3,13 +3,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
-type Params = {
-  id: string;
-};
+// ✅ Gunakan tipe resmi dari Next.js
+type Params = { id: string };
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Params }
+  context: { params: Params } // ✅ Ini benar: context.params
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -18,7 +17,7 @@ export async function GET(
     }
 
     const userId = session.user.id;
-    const projectId = params.id; 
+    const projectId = context.params.id; // ✅ Akses langsung, tanpa await
 
     const project = await prisma.project.findFirst({
       where: {
@@ -52,9 +51,10 @@ export async function GET(
   }
 }
 
+// Lakukan hal yang sama untuk PATCH dan DELETE
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Params }
+  context: { params: Params }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -63,7 +63,7 @@ export async function PATCH(
     }
 
     const userId = session.user.id;
-    const projectId = params.id;
+    const projectId = context.params.id;
 
     const project = await prisma.project.findUnique({
       where: { id: projectId },
@@ -121,7 +121,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Params }
+  context: { params: Params }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -130,7 +130,7 @@ export async function DELETE(
     }
 
     const userId = session.user.id;
-    const projectId = params.id;
+    const projectId = context.params.id;
 
     const project = await prisma.project.findUnique({
       where: { id: projectId },
