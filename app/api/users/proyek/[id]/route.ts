@@ -3,51 +3,52 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
-export function GET(
+export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  return getServerSession(authOptions)
-    .then((session) => {
-      if (!session || !session.user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      const userId = session.user.id;
-      const projectId = params.id;
-      return prisma.project.findFirst({
-        where: {
-          id: projectId,
-          OR: [
-            { creatorId: userId },
-            { members: { some: { userId } } },
-          ],
-        },
-        include: {
-          creator: { select: { name: true } },
-          tasks: {
-            include: {
-              assignedUser: { select: { name: true } },
-            },
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userId = session.user.id;
+    const projectId = (await params).id;
+
+    const project = await prisma.project.findFirst({
+      where: {
+        id: projectId,
+        OR: [
+          { creatorId: userId },
+          { members: { some: { userId } } },
+        ],
+      },
+      include: {
+        creator: { select: { name: true } },
+        tasks: {
+          include: {
+            assignedUser: { select: { name: true } },
           },
         },
-      }).then((project) => {
-        if (!project) {
-          return NextResponse.json({ error: "Project not found" }, { status: 404 });
-        }
-        return NextResponse.json({
-          ...project,
-          isCreator: project.creatorId === userId,
-        });
-      });
-    })
-    .catch((error) => {
-      console.error("Error fetching project:", error);
-      return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
-    })
-    .finally(() => prisma.$disconnect());
+      },
+    });
+
+    if (!project) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      ...project,
+      isCreator: project.creatorId === userId,
+    });
+  } catch (error) {
+    console.error("Error fetching project:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
 }
 
-// Tambahkan PATCH
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -116,7 +117,7 @@ export async function PATCH(
   }
 }
 
-// DELETE: Hapus proyek (hanya creator)
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }

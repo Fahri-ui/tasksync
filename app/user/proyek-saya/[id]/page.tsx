@@ -73,9 +73,7 @@ export default function ProjectDetailPage() {
 
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login");
-    } else if (status === "authenticated" && id) {
+    if (status === "authenticated" && id) {
       fetchProject();
       fetchFriends();
     }
@@ -541,7 +539,7 @@ export default function ProjectDetailPage() {
                             <p className="text-sm text-gray-600 mb-2">{task.description}</p>
                             <div className="flex items-center space-x-4 text-sm text-gray-500">
                               <span className="flex items-center">
-                                <Calendar className="w-4 h-4 mr-1" />
+                                <Calendar className="w-4 h-4 mr-1" /> Deadline :
                                 {new Date(task.deadline).toLocaleDateString("id-ID", {
                                   day: "numeric",
                                   month: "short",
@@ -549,7 +547,7 @@ export default function ProjectDetailPage() {
                                 })}
                               </span>
                               <span className="flex items-center">
-                                <User className="w-4 h-4 mr-1" />
+                                <User className="w-4 h-4 mr-1" /> Penanggunga Jawab : 
                                 {task.assignedUser.name}
                               </span>
                             </div>

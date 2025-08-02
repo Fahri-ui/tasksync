@@ -363,6 +363,7 @@ export default async function DashboardPage() {
                 ) : (
                   <div className="text-center py-4">
                     <p className="text-gray-500">Tidak ada tugas dengan deadline mendekat</p>
+                    <p className="text-gray-500 text-sm mt-2">tugas di hitung ketika 3 hari terakhir dari tanggal deadline</p>
                   </div>
                 )}
               </div>
@@ -426,7 +427,7 @@ export default async function DashboardPage() {
             </div>
           </div>
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">📅 Kalender Mini</h4>
+            <h4 className="text-lg font-semibold text-gray-900 mb-4">📅 Kalender</h4>
             <div className="grid grid-cols-7 gap-2 text-center">
               {["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"].map((day) => (
                 <div key={day} className="p-2 text-sm font-medium text-gray-600">
