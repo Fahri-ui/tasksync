@@ -1,82 +1,8 @@
+import { authOptions } from "@/lib/auth";
 import NextAuth from "next-auth";
-import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcrypt";
-import { z } from "zod";
-import { NextAuthOptions } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-
-const prisma = new PrismaClient();
-
-const authOptions: NextAuthOptions = {
-  providers: [
-    CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "text" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        const schema = z.object({
-          email: z.string().email({ message: "Format email tidak valid" }),
-          password: z.string().min(6, { message: "Kata sandi minimal 6 karakter" }),
-        });
-        try {
-          const { email, password } = schema.parse(credentials);
-          const user = await prisma.user.findUnique({ where: { email } });
-
-          if (!user) throw new Error("Pengguna tidak ditemukan");
-          if (!user.password) throw new Error("Password belum disetel");
-          if (!user.verifiedAt) throw new Error("Akun belum diverifikasi");
-
-          const valid = await bcrypt.compare(password, user.password);
-          if (!valid) throw new Error("Kata sandi salah");
-
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            nomor: user.nomor ?? null,
-            gender: user.gender ? String(user.gender) : null,
-            tanggal_lahir: user.tanggal_lahir ? user.tanggal_lahir.toISOString() : null,
-          };
-        } catch (error: any) {
-          if (error.name === "ZodError") {
-            throw new Error(error.issues[0].message);
-          }
-          throw new Error(error.message || "Terjadi kesalahan saat login");
-        }
-      },
-    }),
-  ],
-  session: { strategy: "jwt" },
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.user = user;
-        token.role = (user as any).role;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      session.user = token.user as any;
-      if (token.role) {
-        (session.user as any).role = token.role as "ADMIN" | "USER";
-      }
-      return session;
-    },
-  },
-  pages: {
-    signIn: "/login",
-  },
-  secret: process.env.NEXTAUTH_SECRET,
-};
 
 // Gunakan authOptions untuk membuat handler
 const handler = NextAuth(authOptions);
 
 // Export handler sebagai GET dan POST
 export { handler as GET, handler as POST };
-
-// ✅ Export authOptions agar bisa digunakan di server (misal: getServerSession)
-export { authOptions };
