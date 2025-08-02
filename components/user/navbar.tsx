@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation"
 import { useState } from "react"
 import Link from "next/link"
 import { Users, Home, LogOut, FolderPlus } from "lucide-react" 
+import Image from "next/image";
 
 export function UserNavbar() {
   const { data: session } = useSession()
@@ -101,16 +102,14 @@ export function UserNavbar() {
             <div className="flex items-center space-x-3">
               <div className="relative">
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2.5}
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
+                  <Image
+                    src="/image/landing/favicon.png"
+                    alt="Tim Kolaborasi TaskSync"
+                    width={500}
+                    height={500}
+                    className="w-10 h-10 text-white" 
+                  />
                 </div>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-br from-pink-400 to-pink-500 rounded-full border-2 border-white"></div>
               </div>
               <div>
                 <h1 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
@@ -170,7 +169,7 @@ export function UserNavbar() {
               onClick={handleLogout}
               className="w-full flex items-center space-x-3 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200"
             >
-              <LogOut className="w-5 h-5" />
+              <LogOut className="w-5 h-5 cursor-pointer" />
               <span>Logout</span>
             </button>
           </div>

@@ -15,12 +15,12 @@ const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {    
+      async authorize(credentials) {
         const schema = z.object({
           email: z.string().email({ message: "Format email tidak valid" }),
           password: z.string().min(6, { message: "Kata sandi minimal 6 karakter" }),
         });
-        try {        
+        try {
           const { email, password } = schema.parse(credentials);
           const user = await prisma.user.findUnique({ where: { email } });
 
@@ -41,22 +41,20 @@ const authOptions: NextAuthOptions = {
             tanggal_lahir: user.tanggal_lahir ? user.tanggal_lahir.toISOString() : null,
           };
         } catch (error: any) {
-        
           if (error.name === "ZodError") {
-            throw new Error(error.issues[0].message); 
-          }        
+            throw new Error(error.issues[0].message);
+          }
           throw new Error(error.message || "Terjadi kesalahan saat login");
         }
-      }
+      },
     }),
   ],
-
   session: { strategy: "jwt" },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
         token.user = user;
-        token.role = (user as any).role; 
+        token.role = (user as any).role;
       }
       return token;
     },
@@ -74,5 +72,11 @@ const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
 };
 
+// Gunakan authOptions untuk membuat handler
 const handler = NextAuth(authOptions);
+
+// Export handler sebagai GET dan POST
 export { handler as GET, handler as POST };
+
+// ✅ Export authOptions agar bisa digunakan di server (misal: getServerSession)
+export { authOptions };

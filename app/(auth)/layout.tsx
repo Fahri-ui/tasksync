@@ -19,15 +19,15 @@ export default function RootLayout({
               <div className="text-center mb-8">
               <div className="flex justify-center mb-6">
                   <div className="relative">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-xl">
-                      <Image
-                      src="/image/landing/favicon.png"
-                      alt="Tim Kolaborasi TaskSync"
-                      width={500}
-                      height={500}
-                      className="w-10 h-10 text-white" 
-                      />
-                  </div>
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-xl">
+                        <Image
+                          src="/image/landing/favicon.png"
+                          alt="Tim Kolaborasi TaskSync"
+                          width={500}
+                          height={500}
+                          className="w-10 h-10 text-white" 
+                        />
+                    </div>
                   </div>
               </div>
               
