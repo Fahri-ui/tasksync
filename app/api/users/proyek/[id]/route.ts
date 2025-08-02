@@ -3,10 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
-export async function GET(
-  request: NextRequest,
-  context: { params: { id: string } } // ✅ Harus literal, bukan tipe alias
-) {
+export async function GET(request: NextRequest, { params }: any) {
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
@@ -14,7 +11,7 @@ export async function GET(
     }
 
     const userId = session.user.id;
-    const projectId = context.params.id; // ✅ Akses langsung
+    const projectId = params.id; // ✅ params.id tetap bekerja
 
     const project = await prisma.project.findFirst({
       where: {
@@ -48,10 +45,7 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  request: NextRequest,
-  context: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, { params }: any) {
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
@@ -59,7 +53,7 @@ export async function PATCH(
     }
 
     const userId = session.user.id;
-    const projectId = context.params.id;
+    const projectId = params.id; // ✅ params.id tetap bekerja
 
     const project = await prisma.project.findUnique({
       where: { id: projectId },
@@ -115,10 +109,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  context: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, { params }: any) {
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
@@ -126,7 +117,7 @@ export async function DELETE(
     }
 
     const userId = session.user.id;
-    const projectId = context.params.id;
+    const projectId = params.id; // ✅ params.id tetap bekerja
 
     const project = await prisma.project.findUnique({
       where: { id: projectId },
