@@ -3,12 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
-// ✅ Gunakan tipe resmi dari Next.js
-type Params = { id: string };
-
 export async function GET(
   request: NextRequest,
-  context: { params: Params } // ✅ Ini benar: context.params
+  context: { params: { id: string } } // ✅ Harus literal, bukan tipe alias
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -17,7 +14,7 @@ export async function GET(
     }
 
     const userId = session.user.id;
-    const projectId = context.params.id; // ✅ Akses langsung, tanpa await
+    const projectId = context.params.id; // ✅ Akses langsung
 
     const project = await prisma.project.findFirst({
       where: {
@@ -51,10 +48,9 @@ export async function GET(
   }
 }
 
-// Lakukan hal yang sama untuk PATCH dan DELETE
 export async function PATCH(
   request: NextRequest,
-  context: { params: Params }
+  context: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -121,7 +117,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: Params }
+  context: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
