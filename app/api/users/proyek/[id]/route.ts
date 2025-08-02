@@ -3,9 +3,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
+type Params = {
+  id: string;
+};
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Params }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -14,7 +18,7 @@ export async function GET(
     }
 
     const userId = session.user.id;
-    const projectId = (await params).id;
+    const projectId = params.id; 
 
     const project = await prisma.project.findFirst({
       where: {
@@ -48,10 +52,9 @@ export async function GET(
   }
 }
 
-
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Params }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -83,7 +86,6 @@ export async function PATCH(
         { status: 400 }
       );
     }
-
 
     const updatedProject = await prisma.project.update({
       where: { id: projectId },
@@ -117,13 +119,12 @@ export async function PATCH(
   }
 }
 
-
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Params }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptions);
     if (!session || !session.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
