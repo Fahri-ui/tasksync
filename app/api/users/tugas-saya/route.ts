@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
 
     if (!isMember) {
       return NextResponse.json(
-        { error: "Penanggung jawab harus menjadi anggota proyek" },
+        { error: "Penanggung jawab harus anggota proyek" },
         { status: 400 }
       );
     }

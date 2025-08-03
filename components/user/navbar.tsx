@@ -6,6 +6,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { Users, Home, LogOut, FolderPlus } from "lucide-react" 
 import Image from "next/image";
+import { signOut } from "next-auth/react";
 
 export function UserNavbar() {
   const { data: session } = useSession()
@@ -17,10 +18,9 @@ export function UserNavbar() {
 
   const handleLogout = async () => {
     try {
-      const res = await fetch("/api/auth/logout", { method: "POST" })
-      if (res.ok) {
-        router.push("/")
-      }
+      await signOut({ 
+        callbackUrl: "/" 
+      });
     } catch (error) {
       console.error("Logout gagal:", error)
     }
@@ -167,9 +167,9 @@ export function UserNavbar() {
           <div className="px-6 py-4 border-t border-gray-100">
             <button
               onClick={handleLogout}
-              className="w-full flex items-center space-x-3 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200"
+              className="cursor-pointer w-full flex items-center space-x-3 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200"
             >
-              <LogOut className="w-5 h-5 cursor-pointer" />
+              <LogOut className="w-5 h-5" />
               <span>Logout</span>
             </button>
           </div>
